@@ -301,14 +301,27 @@ export class PixelWorld {
     this.dogPaused = !!paused
   }
 
+  // shared world-space -> screen-pixel projection used by every DOM overlay
+  // (speech bubbles, the dog/cat illustrations) so they all track the same
+  // camera math the pixel-art world itself is rendered with.
+  _projectToScreen(x, y) {
+    const w = window.innerWidth
+    const h = window.innerHeight
+    const fracX = (x - this.camera.left) / (this.camera.right - this.camera.left)
+    const fracY = 1 - (y - this.camera.bottom) / (this.camera.top - this.camera.bottom)
+    return { x: fracX * w, y: fracY * h }
+  }
+
   // projects the dog's current world position to screen pixel coordinates,
   // so DOM overlays (like its speech bubble) can track it while it roams.
   getDogAnchor() {
-    const w = window.innerWidth
-    const h = window.innerHeight
-    const fracX = (this.dog.position.x - this.camera.left) / (this.camera.right - this.camera.left)
-    const fracY = 1 - (this.dog.position.y - this.camera.bottom) / (this.camera.top - this.camera.bottom)
-    return { x: fracX * w, y: fracY * h }
+    return this._projectToScreen(this.dog.position.x, this.dog.position.y)
+  }
+
+  // same, but offset up to roughly head height — for things that should
+  // float above the dog (e.g. its speech bubble) rather than at its feet.
+  getDogHeadAnchor() {
+    return this._projectToScreen(this.dog.position.x, this.dog.position.y + 0.16)
   }
 
   // Like the cat, the dog is rendered as a smooth SVG DOM overlay (see
@@ -341,11 +354,18 @@ export class PixelWorld {
 
   // projects the (invisible) cat anchor to screen pixel coordinates for the DOM overlay.
   getCatAnchor() {
-    const w = window.innerWidth
-    const h = window.innerHeight
-    const fracX = (this.catAnchor.x - this.camera.left) / (this.camera.right - this.camera.left)
-    const fracY = 1 - (this.catAnchor.y - this.camera.bottom) / (this.camera.top - this.camera.bottom)
-    return { x: fracX * w, y: fracY * h }
+    return this._projectToScreen(this.catAnchor.x, this.catAnchor.y)
+  }
+
+  // offset up to roughly head height, for the cat's speech bubble.
+  getCatHeadAnchor() {
+    return this._projectToScreen(this.catAnchor.x, this.catAnchor.y + 0.18)
+  }
+
+  // the character sprite is centered on its own position (THREE.Sprite default
+  // anchor), so for a speech bubble we want a point above its head, not its waist.
+  getCharacterHeadAnchor() {
+    return this._projectToScreen(this.character.position.x, this.character.position.y + 0.17)
   }
 
   _updateDog(dt) {

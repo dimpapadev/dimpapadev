@@ -87,10 +87,10 @@ h1, h2, h3, .pixel-font {
 
 .speech-bubble {
   position: fixed;
-  left: 26%;
-  bottom: 24%;
+  left: 0;
+  top: 0;
   z-index: 7;
-  transform: translate(-50%, 0) scale(0.85);
+  transform: translate(-50%, -100%) scale(0.85);
   font-family: 'Press Start 2P', monospace;
   font-size: 11px;
   line-height: 1.8;
@@ -121,17 +121,13 @@ h1, h2, h3, .pixel-font {
 
 .speech-bubble.visible {
   opacity: 1;
-  transform: translate(-50%, 0) scale(1);
+  transform: translate(-50%, -100%) scale(1);
 }
 
 .dog-bubble {
-  left: 0;
-  top: 0;
-  bottom: auto;
   background: #e9fff0;
   border-color: #1a3a28;
   color: #1a3a28;
-  transform: translate(-50%, -100%) scale(0.85);
 }
 
 .dog-bubble::after {
@@ -139,27 +135,15 @@ h1, h2, h3, .pixel-font {
   left: 14px;
 }
 
-.dog-bubble.visible {
-  transform: translate(-50%, -100%) scale(1);
-}
-
 .cat-bubble {
-  left: 0;
-  top: 0;
-  bottom: auto;
   background: #fff0f6;
   border-color: #4a1f30;
   color: #4a1f30;
-  transform: translate(-50%, -100%) scale(0.85);
 }
 
 .cat-bubble::after {
   border-top-color: #4a1f30;
   left: 14px;
-}
-
-.cat-bubble.visible {
-  transform: translate(-50%, -100%) scale(1);
 }
 
 /* the world camera maps 1 world unit to (innerHeight / 2) px on both axes, and

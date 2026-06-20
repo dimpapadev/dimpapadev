@@ -123,8 +123,9 @@ function updateCatPosition() {
   const anchor = world.getCatAnchor()
   catIllustration.style.left = `${anchor.x}px`
   catIllustration.style.top = `${anchor.y}px`
-  catSpeechBubble.style.left = `${anchor.x}px`
-  catSpeechBubble.style.top = `${anchor.y - 30}px`
+  const headAnchor = world.getCatHeadAnchor()
+  catSpeechBubble.style.left = `${headAnchor.x}px`
+  catSpeechBubble.style.top = `${headAnchor.y}px`
 }
 window.addEventListener('resize', updateCatPosition)
 
@@ -152,8 +153,13 @@ function tick() {
   dogIllustration.style.top = `${dogAnchor.y}px`
   dogIllustration.dataset.pose = world.getDogPose()
 
-  dogSpeechBubble.style.left = `${dogAnchor.x}px`
-  dogSpeechBubble.style.top = `${dogAnchor.y - 36}px`
+  const dogHeadAnchor = world.getDogHeadAnchor()
+  dogSpeechBubble.style.left = `${dogHeadAnchor.x}px`
+  dogSpeechBubble.style.top = `${dogHeadAnchor.y}px`
+
+  const charHeadAnchor = world.getCharacterHeadAnchor()
+  speechBubble.style.left = `${charHeadAnchor.x}px`
+  speechBubble.style.top = `${charHeadAnchor.y}px`
 
   requestAnimationFrame(tick)
 }
