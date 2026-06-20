@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Dimitrios Papageorgiou — Senior Software Engineer & Software Architect. Java, C#, Angular, React, Azure Cloud." />
+  <title>DIMITRIOS.EXE — Senior Software Engineer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+</head>
+<body>
+  <canvas id="bg"></canvas>
+  <div id="avatar-speech" class="speech-bubble">I REALLY KNOW THAT!</div>
+  <div id="dog-speech" class="speech-bubble dog-bubble">HE AIN'T LYING, WE MISSED WALKS TO LEARN THAT!</div>
+  <div id="cat-speech" class="speech-bubble cat-bubble">I DON'T REALLY CARE, BUT IT BRINGS FOOD TO THE TABLE, SO I CONCUR.</div>
+
+  <div id="skill-modal" class="skill-modal">
+    <div class="skill-modal-panel">
+      <button id="skill-modal-close" class="skill-modal-close" aria-label="Close" type="button">&#10005;</button>
+      <h3 id="skill-modal-title" class="skill-modal-title"></h3>
+      <p id="skill-modal-desc" class="skill-modal-desc"></p>
+    </div>
+  </div>
+
+  <div id="dog-illustration" class="dog-illustration" data-pose="walk" aria-hidden="true">
+    <svg viewBox="0 0 280 180" class="dog-svg">
+      <!-- tail -->
+      <path class="dog-tail" d="M40,100 C26,94 20,82 30,72" stroke="#0a0a0a" stroke-width="15" stroke-linecap="round" fill="none" />
+      <path class="dog-tail" d="M40,100 C26,94 20,82 30,72" stroke="#8a5a2e" stroke-width="10.5" stroke-linecap="round" fill="none" />
+
+      <!-- legs: walk cycle (two alternating sets), sit, and jump-tucked -->
+      <g class="dog-legs-walk">
+        <g class="leg-set-a">
+          <rect x="60" y="125" width="17" height="40" rx="8" fill="#6b4521" />
+          <rect x="100" y="130" width="17" height="34" rx="8" fill="#8a5a2e" />
+          <rect x="145" y="130" width="17" height="34" rx="8" fill="#6b4521" />
+          <rect x="183" y="125" width="17" height="40" rx="8" fill="#8a5a2e" />
+        </g>
+        <g class="leg-set-b">
+          <rect x="70" y="130" width="17" height="34" rx="8" fill="#8a5a2e" />
+          <rect x="92" y="125" width="17" height="40" rx="8" fill="#6b4521" />
+          <rect x="155" y="125" width="17" height="40" rx="8" fill="#8a5a2e" />
+          <rect x="175" y="130" width="17" height="34" rx="8" fill="#6b4521" />
+        </g>
+      </g>
+      <g class="dog-legs-sit">
+        <rect x="70" y="128" width="17" height="36" rx="8" fill="#6b4521" />
+        <rect x="150" y="122" width="17" height="42" rx="8" fill="#8a5a2e" />
+        <rect x="180" y="122" width="17" height="42" rx="8" fill="#6b4521" />
+      </g>
+      <g class="dog-legs-jump">
+        <ellipse cx="85" cy="138" rx="15" ry="11" fill="#6b4521" />
+        <ellipse cx="125" cy="140" rx="15" ry="11" fill="#8a5a2e" />
+        <ellipse cx="165" cy="140" rx="15" ry="11" fill="#6b4521" />
+        <ellipse cx="195" cy="138" rx="15" ry="11" fill="#8a5a2e" />
+      </g>
+
+      <!-- body -->
+      <ellipse cx="130" cy="103" rx="75" ry="33" fill="#1c1c1e" stroke="#0a0a0a" stroke-width="3" />
+
+      <!-- head + snout, then a floppy hanging ear draped over the cheek -->
+      <circle cx="205" cy="65" r="30" fill="#1c1c1e" stroke="#0a0a0a" stroke-width="3" />
+      <rect x="222" y="56" width="38" height="28" rx="7" fill="#1c1c1e" stroke="#0a0a0a" stroke-width="3" />
+      <path d="M196,38 C184,40 176,56 182,72 C186,80 196,80 198,70
+               C200,60 199,48 196,38 Z" fill="#8a5a2e" stroke="#0a0a0a" stroke-width="2.5" />
+
+      <!-- eye -->
+      <circle cx="222" cy="58" r="5" fill="#f4ede0" stroke="#0a0a0a" stroke-width="2" />
+      <circle cx="223" cy="58" r="2.3" fill="#0a0a0a" />
+
+      <!-- nose + simple mouth line -->
+      <ellipse cx="261" cy="71" rx="4.5" ry="3.5" fill="#0a0a0a" />
+      <path d="M257,76 Q248,82 240,78" stroke="#0a0a0a" stroke-width="2.5" stroke-linecap="round" fill="none" />
+
+      <!-- little tongue flick, only shown while licking -->
+      <ellipse class="dog-tongue" cx="247" cy="84" rx="3.5" ry="7" fill="#e07a8a" stroke="#0a0a0a" stroke-width="1.5" />
+    </svg>
+  </div>
+
+  <div id="cat-illustration" class="cat-illustration" aria-hidden="true">
+    <div class="cat-zzz">Z<span>z</span></div>
+    <svg viewBox="0 0 200 200" class="cat-svg" stroke="#2a1f14" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <!-- tail: dark outline stroke, then a white stroke on top, so it reads as a
+           solid white tail (no closed shape needed for the curl) -->
+      <path d="M168,150 C195,140 205,110 188,90 C178,78 165,82 168,95 C171,108 180,118 172,135"
+        stroke-width="9" />
+      <path d="M168,150 C195,140 205,110 188,90 C178,78 165,82 168,95 C171,108 180,118 172,135"
+        stroke="#fdfaf2" stroke-width="6.5" />
+
+      <!-- body, sitting — white fur -->
+      <path d="M52,96 C30,102 20,130 24,158 C27,182 42,196 65,196 L135,196
+               C158,196 172,182 174,156 C176,128 165,102 145,96"
+        fill="#fdfaf2" />
+      <!-- brown patches on the body -->
+      <ellipse cx="140" cy="135" rx="19" ry="15" fill="#9c6a35" stroke="none" />
+      <ellipse cx="58" cy="165" rx="13" ry="10" fill="#9c6a35" stroke="none" />
+
+      <!-- front legs -->
+      <path d="M88,140 C80,165 75,185 80,196" />
+      <path d="M112,140 C120,165 125,185 120,196" />
+
+      <!-- head + ears, single outline — white fur -->
+      <path d="M58,18 C45,30 38,50 38,72 C38,88 45,98 55,98 L145,98
+               C155,98 162,88 162,72 C162,50 155,30 142,18
+               L118,55 C112,48 108,45 100,46 C92,45 88,48 82,55 Z"
+        fill="#fdfaf2" />
+      <!-- brown patch tucked into one ear -->
+      <ellipse cx="136" cy="40" rx="9" ry="11" fill="#9c6a35" stroke="none" />
+
+      <!-- small fur tufts between the ears -->
+      <path d="M92,24 L90,34" stroke-width="4" />
+      <path d="M100,20 L100,32" stroke-width="4" />
+      <path d="M108,24 L110,34" stroke-width="4" />
+
+      <!-- eyes -->
+      <circle cx="78" cy="68" r="13" fill="#fdf6ea" stroke-width="5" />
+      <circle cx="122" cy="68" r="13" fill="#fdf6ea" stroke-width="5" />
+      <circle cx="75" cy="64" r="3.4" fill="#2a1f14" stroke="none" />
+      <circle cx="119" cy="64" r="3.4" fill="#2a1f14" stroke="none" />
+
+      <!-- nose + mouth -->
+      <ellipse cx="100" cy="84" rx="7" ry="4.5" stroke-width="5" />
+      <path d="M100,88 L100,91" stroke-width="5" />
+      <path d="M100,91 Q92,98 84,93" stroke-width="5" />
+      <path d="M100,91 Q108,98 116,93" stroke-width="5" />
+
+      <!-- whiskers -->
+      <path d="M58,80 L30,76" stroke-width="4" />
+      <path d="M58,88 L28,90" stroke-width="4" />
+      <path d="M60,95 L32,103" stroke-width="4" />
+      <path d="M142,80 L170,76" stroke-width="4" />
+      <path d="M142,88 L172,90" stroke-width="4" />
+      <path d="M140,95 L168,103" stroke-width="4" />
+    </svg>
+  </div>
+
+  <div id="scanlines"></div>
+  <div id="vignette"></div>
+
+  <div id="boot-screen">
+    <div class="boot-text">
+      <p>LOADING DIMITRIOS.EXE<span class="dots"></span></p>
+      <div class="boot-bar"><div class="boot-bar-fill"></div></div>
+      <p class="press-start">PRESS ANY KEY / SCROLL TO START</p>
+    </div>
+  </div>
+
+  <header id="hud">
+    <div class="hud-left">
+      <span class="hud-life">&hearts; &hearts; &hearts;</span>
+    </div>
+    <nav id="hud-nav">
+      <button data-target="hero">P1</button>
+      <button data-target="about">ABOUT</button>
+      <button data-target="career">CAREER</button>
+      <button data-target="stack">STACK</button>
+      <button data-target="quality">QA</button>
+      <button data-target="cloud">CLOUD</button>
+      <button data-target="services">AZURE</button>
+      <button data-target="infra">INFRA</button>
+      <button data-target="contact">END</button>
+    </nav>
+    <div class="hud-right">
+      <span id="hud-score">SCORE 000000</span>
+    </div>
+  </header>
+
+  <div id="progress-track"><div id="progress-fill"></div></div>
+
+  <main id="content">
+
+    <section id="hero" class="stage" data-level="1-1">
+      <div class="level-tag">LEVEL 1-1 &mdash; SPAWN POINT</div>
+      <div class="panel hero-panel">
+        <h1 class="glitch" data-text="DIMITRIOS PAPAGEORGIOU">DIMITRIOS PAPAGEORGIOU</h1>
+        <p class="subtitle typewriter">SENIOR SOFTWARE ENGINEER // SOFTWARE ARCHITECT</p>
+        <p class="hero-desc">
+          A full-stack &amp; cloud player with a solid build in
+          <span class="tag tag-java" data-title="Java" data-desc="Primary backend language for high-throughput, enterprise-grade services — especially in regulated eGovernment systems.">JAVA</span><span class="tag tag-csharp" data-title="C#" data-desc="Primary language for the .NET side of the stack, powering Core/MVC services and Web APIs.">C#</span>
+          on the backend and
+          <span class="tag tag-angular" data-title="Angular" data-desc="Component-based SPA framework used for large enterprise frontends with strong typing and structure.">ANGULAR</span><span class="tag tag-react" data-title="React" data-desc="Component-driven UI library used for fast, modern single-page applications.">REACT</span>
+          on the frontend.
+        </p>
+        <div class="cta-row">
+          <a href="#about" class="btn-8bit primary">&#9658; START GAME</a>
+          <a href="#contact" class="btn-8bit">&#9873; CONTINUE</a>
+        </div>
+      </div>
+      <div class="scroll-hint">SCROLL &#9660;</div>
+    </section>
+
+    <section id="about" class="stage" data-level="1-2">
+      <div class="level-tag">LEVEL 1-2 &mdash; CHARACTER PROFILE</div>
+      <div class="panel">
+        <h2 class="section-title">&#9658; ABOUT ME</h2>
+        <p class="body-text">
+          I am a <strong>Senior Software Engineer</strong> and developing <strong>Software Architect</strong>
+          with a solid full-stack and cloud background, working primarily with
+          <strong>Java</strong> and <strong>C#</strong> on the backend and <strong>Angular</strong> and
+          <strong>React</strong> on the frontend.
+        </p>
+        <p class="body-text">
+          My career spans software engineering, cloud solution design, DevOps practices, and infrastructure
+          implementation — giving me a comprehensive understanding of how modern systems are planned,
+          built, deployed, and operated.
+        </p>
+        <div class="stat-grid">
+          <div class="stat-box"><span class="stat-label">CLASS</span><span class="stat-value">ARCHITECT</span></div>
+          <div class="stat-box"><span class="stat-label">SPECIALTY</span><span class="stat-value">FULL-STACK</span></div>
+          <div class="stat-box"><span class="stat-label">REALM</span><span class="stat-value">AZURE CLOUD</span></div>
+          <div class="stat-box"><span class="stat-label">SECTOR</span><span class="stat-value">eGOV</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="career" class="stage" data-level="2-1">
+      <div class="level-tag">LEVEL 2-1 &mdash; THE eGOVERNMENT DUNGEON</div>
+      <div class="panel">
+        <h2 class="section-title">&#9658; CAREER PATH</h2>
+        <p class="body-text">
+          A significant part of my experience has been in the <strong>eGovernment sector</strong>, where I
+          have participated in and led projects requiring strict standards for security, reliability, and
+          compliance.
+        </p>
+        <div class="quest-log">
+          <div class="quest-item">
+            <span class="quest-icon">&#9876;</span>
+            <div>
+              <h3>SENIOR ENGINEER</h3>
+              <p>Contributed to architectural decisions, built scalable backend systems with clean, modular,
+                long-term maintainable design.</p>
+            </div>
+          </div>
+          <div class="quest-item">
+            <span class="quest-icon">&#128737;</span>
+            <div>
+              <h3>TEAM LEAD</h3>
+              <p>Supported team members and ensured smooth delivery from initial design through to
+                production.</p>
+            </div>
+          </div>
+          <div class="quest-item">
+            <span class="quest-icon">&#9733;</span>
+            <div>
+              <h3>COMPLIANCE &amp; SECURITY</h3>
+              <p>Delivered under strict eGovernment standards for security, reliability, and compliance.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="stack" class="stage" data-level="2-2">
+      <div class="level-tag">LEVEL 2-2 &mdash; THE INVENTORY</div>
+      <div class="panel">
+        <h2 class="section-title">&#9658; TECH STACK</h2>
+        <div class="inventory">
+          <div class="inv-column">
+            <h3>BACKEND</h3>
+            <ul class="inv-list">
+              <li data-power="92" data-title="Java" data-desc="Primary JVM language for enterprise backend services — used for everything from REST APIs to long-running batch processing in regulated eGovernment systems.">Java</li>
+              <li data-power="88" data-title="Spring Boot" data-desc="Main framework for building Java microservices: auto-configuration, embedded servers, and production-ready REST APIs with minimal boilerplate.">Spring Boot</li>
+              <li data-power="82" data-title="Spring Cloud &amp; Spring Data" data-desc="Microservice ecosystem tooling — config management, service discovery, and repository-based data access (JPA/Hibernate) layered on Spring Boot.">Spring Cloud &amp; Spring Data</li>
+              <li data-power="80" data-title="Reactive Programming" data-desc="Non-blocking, event-driven backend flows using Project Reactor and Spring WebFlux for high-concurrency, low-latency services.">Reactive Programming (WebFlux)</li>
+              <li data-power="90" data-title="C#" data-desc="Primary language for the .NET side of the stack, sharing many architectural patterns with the Java backend services.">C#</li>
+              <li data-power="85" data-title=".NET Core / ASP.NET MVC" data-desc="Cross-platform .NET backend services and MVC web applications, including ASP.NET Web API endpoints.">.NET Core / ASP.NET MVC</li>
+              <li data-power="78" data-title="Entity Framework Core" data-desc="Code-first and database-first ORM used for data access layers in .NET applications, including migrations and query optimization.">Entity Framework Core</li>
+              <li data-power="86" data-title="REST &amp; gRPC APIs" data-desc="Designing versioned, well-documented REST endpoints and high-performance gRPC contracts for service-to-service communication.">REST &amp; gRPC APIs</li>
+              <li data-power="84" data-title="Microservices Architecture" data-desc="Decomposing monolithic systems into independently deployable services with clear bounded contexts and contracts.">Microservices Architecture</li>
+            </ul>
+          </div>
+          <div class="inv-column">
+            <h3>FRONTEND &amp; WEB</h3>
+            <ul class="inv-list">
+              <li data-power="84" data-title="Angular" data-desc="Component-based SPA framework used for large enterprise frontends, including routing, forms, and dependency injection at scale.">Angular</li>
+              <li data-power="76" data-title="RxJS &amp; NgRx" data-desc="Reactive state management and async data flows in Angular applications using observables and a Redux-style store.">RxJS &amp; NgRx</li>
+              <li data-power="86" data-title="React" data-desc="Component-driven UI library used for fast, modern single-page applications and dashboards.">React</li>
+              <li data-power="75" data-title="Redux / Context API" data-desc="Predictable state containers and lightweight state sharing patterns in React applications.">Redux / Context API</li>
+              <li data-power="88" data-title="TypeScript" data-desc="Statically typed superset of JavaScript used across both the Angular and React codebases for safer, more maintainable UI code.">TypeScript</li>
+              <li data-power="80" data-title="HTTP/HTTPS &amp; Web Standards" data-desc="Deep working knowledge of HTTP semantics, caching, CORS, TLS, and REST conventions that underpin every web integration.">HTTP/HTTPS &amp; Web Standards</li>
+            </ul>
+          </div>
+          <div class="inv-column">
+            <h3>DESIGN PRINCIPLES</h3>
+            <ul class="inv-list plain">
+              <li data-title="Clean Architecture" data-desc="Layering code so business logic stays independent of frameworks, databases, and UI — easier to test and evolve.">Clean Architecture</li>
+              <li data-title="Modular Design" data-desc="Splitting systems into well-bounded modules with explicit contracts, reducing accidental coupling.">Modular Design</li>
+              <li data-title="Long-term Maintainability" data-desc="Favoring readability and conventions that keep a codebase healthy years after the original authors have moved on.">Long-term Maintainability</li>
+              <li data-title="Full-Stack Capability" data-desc="Comfortable owning a feature end-to-end, from the database and API layer through to the UI that consumes it.">Full-Stack Capability</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="quality" class="stage" data-level="3-1">
+      <div class="level-tag">LEVEL 3-1 &mdash; THE TESTING GROUNDS</div>
+      <div class="panel">
+        <h2 class="section-title">&#9658; QUALITY &amp; DELIVERY</h2>
+        <p class="body-text">
+          Throughout the development lifecycle, I apply best practices for testing, automation, and
+          environment management to ensure quality and consistency.
+        </p>
+        <div class="badge-row">
+          <div class="badge" data-title="Unit Testing" data-desc="JUnit &amp; Mockito on the Java side, xUnit/NUnit on .NET — fast, isolated tests covering business logic.">UNIT TESTING (JUNIT / XUNIT)</div>
+          <div class="badge" data-title="Integration Testing" data-desc="Verifying that services, databases, and external dependencies work together correctly, often via Testcontainers-style setups.">INTEGRATION TESTING</div>
+          <div class="badge" data-title="Test Automation" data-desc="Automated UI and API regression suites using tools like Selenium, Cypress, or Playwright wired into the pipeline.">TEST AUTOMATION (SELENIUM / CYPRESS)</div>
+          <div class="badge" data-title="CI/CD Pipelines" data-desc="Automated build, test, and release pipelines that catch regressions early and ship with confidence.">CI/CD PIPELINES</div>
+          <div class="badge" data-title="Environment Management" data-desc="Keeping dev, test, staging, and production environments consistent and reproducible.">ENVIRONMENT MANAGEMENT</div>
+          <div class="badge" data-title="Static Analysis &amp; Code Quality" data-desc="Code quality gates using tools like SonarQube to catch bugs, code smells, and security issues before merge.">STATIC ANALYSIS (SONARQUBE)</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="cloud" class="stage" data-level="3-2">
+      <div class="level-tag">LEVEL 3-2 &mdash; ASCENDING TO THE CLOUD</div>
+      <div class="panel">
+        <h2 class="section-title">&#9658; CLOUD &amp; DEVOPS — AZURE</h2>
+        <p class="body-text">
+          In recent years, my work has focused heavily on designing and implementing cloud solutions on the
+          <strong>Azure Cloud Platform</strong> — taking systems from conceptual architecture through
+          deployment.
+        </p>
+        <div class="pipeline">
+          <div class="pipe-node" data-title="Design" data-desc="Conceptual architecture: mapping requirements to Azure services, network topology, and a delivery plan before any code is written.">DESIGN</div>
+          <div class="pipe-arrow">&rarr;</div>
+          <div class="pipe-node" data-title="Azure DevOps Pipelines" data-desc="YAML-defined build and release pipelines with automated builds, branching strategies, and test integration.">AZURE DEVOPS<br/>PIPELINES</div>
+          <div class="pipe-arrow">&rarr;</div>
+          <div class="pipe-node" data-title="Build &amp; Release" data-desc="Versioned artifacts promoted through environments with approvals and gated releases.">BUILD &amp; RELEASE</div>
+          <div class="pipe-arrow">&rarr;</div>
+          <div class="pipe-node" data-title="Policy Enforcement" data-desc="Azure Policy and pipeline gates enforcing security, tagging, and compliance rules before deployment.">POLICY<br/>ENFORCEMENT</div>
+          <div class="pipe-arrow">&rarr;</div>
+          <div class="pipe-node" data-title="Production" data-desc="Monitored, governed production environments with rollback plans and observability built in from day one.">PRODUCTION</div>
+        </div>
+        <p class="body-text">
+          Infrastructure as Code with <strong>Bicep</strong>: virtual networks, subnets, private endpoints,
+          NSGs, firewalls, and secure communication flows.
+        </p>
+        <div class="badge-row">
+          <div class="badge" data-title="Bicep &amp; ARM Templates" data-desc="Declarative Infrastructure as Code for Azure — Bicep compiles down to ARM templates for repeatable, version-controlled environments.">BICEP &amp; ARM TEMPLATES</div>
+          <div class="badge" data-title="VNets &amp; Subnets" data-desc="Designing virtual network topologies and subnet segmentation to isolate workloads and control traffic flow.">VNETS &amp; SUBNETS</div>
+          <div class="badge" data-title="Private Endpoints" data-desc="Bringing PaaS services into a private network, removing public internet exposure for sensitive data paths.">PRIVATE ENDPOINTS</div>
+          <div class="badge" data-title="NSGs &amp; Firewalls" data-desc="Network Security Groups and Azure Firewall rules controlling inbound/outbound traffic at the subnet and network level.">NSGs &amp; FIREWALLS</div>
+          <div class="badge" data-title="Branching Strategies" data-desc="GitFlow and trunk-based branching strategies tailored to release cadence and team size.">BRANCHING STRATEGIES</div>
+          <div class="badge" data-title="Azure Policy &amp; Governance" data-desc="Org-wide guardrails — naming, tagging, allowed resource types, and compliance auditing enforced via Azure Policy.">POLICY &amp; GOVERNANCE</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="services" class="stage" data-level="3-3">
+      <div class="level-tag">LEVEL 3-3 &mdash; THE AZURE ARMORY</div>
+      <div class="panel">
+        <h2 class="section-title">&#9658; AZURE SERVICES ARSENAL</h2>
+
+        <div class="armory-category">
+          <h3>COMPUTE &amp; HOSTING</h3>
+          <div class="armory-grid">
+            <div class="armory-item" data-title="App Services" data-desc="PaaS web hosting for APIs and web apps, with deployment slots, auto-scale, and managed identity built in."><span class="armory-icon">&#129513;</span>App Services</div>
+            <div class="armory-item" data-title="Azure Functions" data-desc="Event-driven, serverless compute for short-lived workloads — triggers from HTTP, queues, timers, and more."><span class="armory-icon">&#9881;</span>Azure Functions</div>
+            <div class="armory-item" data-title="Container Apps" data-desc="Serverless containers for microservices, with built-in scaling and Dapr/KEDA-style event-driven patterns."><span class="armory-icon">&#128230;</span>Container Apps</div>
+            <div class="armory-item" data-title="AKS &amp; Container Registry" data-desc="Azure Kubernetes Service for orchestrating containerized workloads, backed by a private Container Registry for images."><span class="armory-icon">&#9775;</span>AKS &amp; Container Registry</div>
+          </div>
+        </div>
+
+        <div class="armory-category">
+          <h3>NETWORKING &amp; DELIVERY</h3>
+          <div class="armory-grid">
+            <div class="armory-item" data-title="Application Gateway" data-desc="Layer-7 load balancer: configuring listeners, path-based routing rules, backend pools, health probes, and WAF policies to wire traffic into the right services."><span class="armory-icon">&#128682;</span>Application Gateway</div>
+            <div class="armory-item" data-title="API Management" data-desc="Fronting APIs with a managed gateway — policies, rate limiting, versioning, and a developer portal."><span class="armory-icon">&#128268;</span>API Management</div>
+            <div class="armory-item" data-title="Front Door / CDN" data-desc="Global entry point for web apps — edge caching, SSL offload, and routing across regions for low-latency delivery."><span class="armory-icon">&#127760;</span>Front Door / CDN</div>
+            <div class="armory-item" data-title="Private DNS &amp; Endpoints" data-desc="Private DNS zones resolving private endpoints so internal traffic never has to leave the virtual network."><span class="armory-icon">&#128279;</span>Private DNS &amp; Endpoints</div>
+          </div>
+        </div>
+
+        <div class="armory-category">
+          <h3>MESSAGING &amp; EVENTING</h3>
+          <div class="armory-grid">
+            <div class="armory-item" data-title="Service Bus" data-desc="Enterprise message broker with queues and topics for reliable, ordered, transactional messaging between services."><span class="armory-icon">&#128232;</span>Service Bus</div>
+            <div class="armory-item" data-title="Event Hubs" data-desc="High-throughput event ingestion for telemetry and streaming pipelines, akin to a managed Kafka."><span class="armory-icon">&#128225;</span>Event Hubs</div>
+            <div class="armory-item" data-title="Event Grid" data-desc="Lightweight, push-based pub/sub for reacting to resource and application events across Azure services.">Event Grid</div>
+            <div class="armory-item" data-title="Storage Queues" data-desc="Simple, durable queueing for decoupling background work from the request path."><span class="armory-icon">&#128229;</span>Storage Queues</div>
+          </div>
+        </div>
+
+        <div class="armory-category">
+          <h3>DATA &amp; AI</h3>
+          <div class="armory-grid">
+            <div class="armory-item" data-title="Azure Storage" data-desc="Blob, table, and queue storage underpinning everything from static assets to durable function state."><span class="armory-icon">&#128190;</span>Azure Storage</div>
+            <div class="armory-item" data-title="Azure SQL Database" data-desc="Managed relational database service for transactional workloads, with built-in HA and automated backups.">Azure SQL Database</div>
+            <div class="armory-item" data-title="Cosmos DB" data-desc="Globally distributed, multi-model NoSQL database for low-latency, high-throughput data access patterns.">Cosmos DB</div>
+            <div class="armory-item" data-title="Azure AI Search" data-desc="Managed search-as-a-service with full-text search, vector search, and AI-enriched indexing pipelines."><span class="armory-icon">&#128269;</span>Azure AI Search</div>
+            <div class="armory-item" data-title="Azure Translator" data-desc="Cognitive Services translation API used to localize content across languages in eGovernment-facing applications."><span class="armory-icon">&#127757;</span>Azure Translator</div>
+          </div>
+        </div>
+
+        <div class="armory-category">
+          <h3>IDENTITY &amp; SECURITY</h3>
+          <div class="armory-grid">
+            <div class="armory-item" data-title="Entra ID" data-desc="Azure's identity platform (formerly Azure AD) for authentication, SSO, and conditional access policies."><span class="armory-icon">&#129516;</span>Entra ID</div>
+            <div class="armory-item" data-title="Managed Identity" data-desc="Letting Azure resources authenticate to each other without secrets in code or config — credential-free by design."><span class="armory-icon">&#128434;</span>Managed Identity</div>
+            <div class="armory-item" data-title="Key Vault" data-desc="Centralized, audited storage for secrets, connection strings, and certificates."><span class="armory-icon">&#128273;</span>Key Vault</div>
+            <div class="armory-item" data-title="Azure RBAC" data-desc="Role-based access control scoping who can do what, at the subscription, resource group, or resource level.">Azure RBAC</div>
+          </div>
+        </div>
+
+        <div class="armory-category">
+          <h3>OBSERVABILITY</h3>
+          <div class="armory-grid">
+            <div class="armory-item" data-title="Azure Monitor" data-desc="Centralized metrics and alerting across every Azure resource in a solution.">Azure Monitor</div>
+            <div class="armory-item" data-title="Application Insights" data-desc="APM for live applications — request tracing, dependency maps, and performance diagnostics.">Application Insights</div>
+            <div class="armory-item" data-title="Log Analytics" data-desc="Kusto-queryable log aggregation across services, used for diagnostics, audits, and dashboards.">Log Analytics</div>
+          </div>
+        </div>
+
+        <p class="body-text small">
+          My work consistently involves secure-by-design patterns, proper identity management, and
+          adherence to cloud governance.
+        </p>
+      </div>
+    </section>
+
+    <section id="infra" class="stage" data-level="4-1">
+      <div class="level-tag">LEVEL 4-1 &mdash; THE ENGINE ROOM</div>
+      <div class="panel">
+        <h2 class="section-title">&#9658; INFRASTRUCTURE &amp; OPERATIONS</h2>
+        <p class="body-text">
+          Beyond cloud and application development, I have hands-on experience with containerized
+          deployments, server configuration, and keeping distributed systems healthy and fast.
+        </p>
+        <div class="badge-row">
+          <div class="badge" data-title="Docker" data-desc="Containerizing applications for consistent builds and deployments across every environment.">DOCKER</div>
+          <div class="badge" data-title="Container Registries" data-desc="Versioned, access-controlled storage for container images feeding deployments and pipelines.">CONTAINER REGISTRIES</div>
+          <div class="badge" data-title="Kubernetes / AKS" data-desc="Orchestrating containerized workloads — deployments, services, ingress, and autoscaling.">KUBERNETES / AKS</div>
+          <div class="badge" data-title="Server Configuration &amp; Maintenance" data-desc="Provisioning, patching, and maintaining the servers and VMs that underpin a solution.">SERVER CONFIG &amp; MAINTENANCE</div>
+          <div class="badge" data-title="Reverse Proxies &amp; Load Balancing" data-desc="Routing and balancing web traffic across instances using reverse proxies and load balancers for resilience.">REVERSE PROXIES &amp; LOAD BALANCING</div>
+          <div class="badge" data-title="TLS/SSL &amp; Certificates" data-desc="Issuing, renewing, and wiring up TLS certificates to keep every web endpoint encrypted end-to-end.">TLS/SSL &amp; CERTIFICATES</div>
+          <div class="badge" data-title="Performance Optimization" data-desc="Profiling and tuning applications and queries to remove bottlenecks under real-world load.">PERFORMANCE OPTIMIZATION</div>
+          <div class="badge" data-title="Scaling Strategies" data-desc="Horizontal and vertical scaling, plus autoscale rules, to handle variable load without overprovisioning.">SCALING STRATEGIES</div>
+          <div class="badge" data-title="Logging &amp; Monitoring" data-desc="Centralized logging and monitoring (Azure Monitor / Application Insights) for fast root-cause analysis.">LOGGING &amp; MONITORING</div>
+          <div class="badge" data-title="Resilience &amp; Application Stability" data-desc="Retry policies, circuit breakers, and graceful degradation patterns that keep distributed systems standing under failure.">RESILIENCE &amp; STABILITY</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="contact" class="stage" data-level="boss">
+      <div class="level-tag">FINAL LEVEL &mdash; CONTINUE?</div>
+      <div class="panel hero-panel">
+        <h2 class="section-title center">GAME OVER<span class="blink">_</span></h2>
+        <p class="body-text center">Insert coin to continue the conversation.</p>
+        <div class="contact-row">
+          <a class="btn-8bit primary" href="mailto:papageorgiou-dimitrios@outlook.com">&#9993; EMAIL</a>
+          <a class="btn-8bit" href="https://github.com/" target="_blank" rel="noopener">GITHUB</a>
+          <a class="btn-8bit" href="https://www.linkedin.com/" target="_blank" rel="noopener">LINKEDIN</a>
+        </div>
+        <p class="footer-note">&copy; <span id="year"></span> DIMITRIOS PAPAGEORGIOU — BUILT WITH THREE.JS &amp; PURE NOSTALGIA</p>
+      </div>
+    </section>
+
+  </main>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

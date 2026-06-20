@@ -1,0 +1,1034 @@
+/* ============================================================
+   DIMITRIOS.EXE — 8-BIT GAME PROFILE
+   ============================================================ */
+
+:root {
+  --ink: #f4f1de;
+  --bg-deep: #0b0e1a;
+  --panel-bg: #14182a;
+  --panel-border: #f4f1de;
+  --accent-cyan: #39ff9d;
+  --accent-pink: #ff3d7f;
+  --accent-yellow: #ffd23f;
+  --accent-blue: #3fa9ff;
+  --accent-purple: #b16cff;
+  --shadow-hard: 6px 6px 0 #000;
+  --pixel: 4px;
+
+  font-family: 'VT323', monospace;
+  font-size: 20px;
+  color: var(--ink);
+  background: var(--bg-deep);
+  -webkit-font-smoothing: none;
+  image-rendering: pixelated;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg-deep);
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+}
+
+::selection {
+  background: var(--accent-pink);
+  color: #000;
+}
+
+::-webkit-scrollbar {
+  width: 14px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-deep);
+  border-left: 2px solid var(--ink);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--accent-cyan);
+  border: 2px solid #000;
+}
+
+h1, h2, h3, .pixel-font {
+  font-family: 'Press Start 2P', monospace;
+  image-rendering: pixelated;
+  line-height: 1.5;
+}
+
+/* ---------------- Canvas / FX layers ---------------- */
+
+#bg {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  display: block;
+}
+
+#scanlines {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0) 0px,
+    rgba(0, 0, 0, 0.12) 1px,
+    rgba(0, 0, 0, 0.12) 2px,
+    rgba(0, 0, 0, 0) 3px
+  );
+  mix-blend-mode: multiply;
+  opacity: 0.6;
+}
+
+.speech-bubble {
+  position: fixed;
+  left: 26%;
+  bottom: 24%;
+  z-index: 7;
+  transform: translate(-50%, 0) scale(0.85);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 11px;
+  line-height: 1.8;
+  letter-spacing: 0.5px;
+  color: #181018;
+  background: #fdf8ec;
+  border: 3px solid #181018;
+  box-shadow: 4px 4px 0 #000;
+  padding: 12px 14px;
+  max-width: 240px;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.speech-bubble::after {
+  content: '';
+  position: absolute;
+  left: 18px;
+  bottom: -10px;
+  width: 0;
+  height: 0;
+  border: 8px solid transparent;
+  border-top-color: #181018;
+  border-bottom: 0;
+}
+
+.speech-bubble.visible {
+  opacity: 1;
+  transform: translate(-50%, 0) scale(1);
+}
+
+.dog-bubble {
+  left: 0;
+  top: 0;
+  bottom: auto;
+  background: #e9fff0;
+  border-color: #1a3a28;
+  color: #1a3a28;
+  transform: translate(-50%, -100%) scale(0.85);
+}
+
+.dog-bubble::after {
+  border-top-color: #1a3a28;
+  left: 14px;
+}
+
+.dog-bubble.visible {
+  transform: translate(-50%, -100%) scale(1);
+}
+
+.cat-bubble {
+  left: 0;
+  top: 0;
+  bottom: auto;
+  background: #fff0f6;
+  border-color: #4a1f30;
+  color: #4a1f30;
+  transform: translate(-50%, -100%) scale(0.85);
+}
+
+.cat-bubble::after {
+  border-top-color: #4a1f30;
+  left: 14px;
+}
+
+.cat-bubble.visible {
+  transform: translate(-50%, -100%) scale(1);
+}
+
+/* the world camera maps 1 world unit to (innerHeight / 2) px on both axes, and
+   the dog's world footprint is 0.16 world units tall, so 0.16 * innerHeight/2
+   = 8% of viewport height. Width follows the SVG's own (non-square) aspect. */
+.dog-illustration {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 4;
+  height: 8vh;
+  width: calc(8vh * 280 / 180);
+  transform: translate(-50%, -68%);
+  filter: drop-shadow(3px 4px 0 rgba(0, 0, 0, 0.45));
+}
+
+.dog-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.dog-tail {
+  animation: dog-tail-wag 1.1s ease-in-out infinite;
+  transform-origin: 40px 100px;
+}
+
+@keyframes dog-tail-wag {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-14deg); }
+}
+
+.dog-legs-walk,
+.dog-legs-sit,
+.dog-legs-jump,
+.dog-tongue {
+  display: none;
+}
+
+[data-pose='walk'] .dog-legs-walk,
+[data-pose='jump'] .dog-legs-walk {
+  display: block;
+}
+
+[data-pose='sit'] .dog-legs-sit,
+[data-pose='lick'] .dog-legs-sit {
+  display: block;
+}
+
+[data-pose='jump'] .dog-legs-jump {
+  display: block;
+}
+
+[data-pose='lick'] .dog-tongue {
+  display: block;
+  animation: dog-tongue-flick 0.45s ease-in-out infinite alternate;
+  transform-origin: 247px 80px;
+}
+
+@keyframes dog-tongue-flick {
+  from { transform: scaleY(0.6); }
+  to { transform: scaleY(1.15); }
+}
+
+.dog-legs-walk .leg-set-a,
+.dog-legs-walk .leg-set-b {
+  animation: dog-walk-cycle 0.36s steps(1) infinite;
+}
+
+.dog-legs-walk .leg-set-b {
+  animation-delay: 0.18s;
+}
+
+@keyframes dog-walk-cycle {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+/* sized to match the dog sprite's on-screen footprint: the world camera maps
+   1 world unit to (innerHeight / 2) px on both axes, and the dog is a 0.16x0.16
+   world-unit square sprite, so 0.16 * innerHeight/2 = 8% of viewport height. */
+.cat-illustration {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 4;
+  width: 8vh;
+  height: 8vh;
+  transform: translate(-50%, -78%);
+  filter: drop-shadow(3px 4px 0 rgba(0, 0, 0, 0.45));
+}
+
+.cat-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  animation: cat-breathe 3.2s ease-in-out infinite;
+  transform-origin: 50% 100%;
+}
+
+@keyframes cat-breathe {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(1.035); }
+}
+
+.cat-zzz {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  font-family: 'VT323', monospace;
+  font-weight: bold;
+  font-size: 20px;
+  color: #fdf8ec;
+  text-shadow: 2px 2px 0 #1a1a1a, -1px -1px 0 #1a1a1a;
+  animation: cat-zzz-float 2.6s ease-in-out infinite;
+}
+
+.cat-zzz span {
+  font-size: 14px;
+  margin-left: 2px;
+}
+
+@keyframes cat-zzz-float {
+  0%, 100% { transform: translateY(0); opacity: 0.7; }
+  50% { transform: translateY(-6px); opacity: 1; }
+}
+
+#vignette {
+  position: fixed;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, rgba(0,0,0,0) 55%, rgba(0,0,0,0.65) 100%);
+}
+
+/* ---------------- Boot screen ---------------- */
+
+#boot-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  transition: opacity 0.8s ease, visibility 0.8s ease;
+}
+
+#boot-screen.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.boot-text {
+  font-family: 'Press Start 2P', monospace;
+  color: var(--accent-cyan);
+  text-align: center;
+  font-size: 14px;
+}
+
+.boot-text .dots::after {
+  content: '...';
+  animation: dots 1.4s steps(4, jump-none) infinite;
+}
+
+@keyframes dots {
+  0% { content: ''; }
+  25% { content: '.'; }
+  50% { content: '..'; }
+  75% { content: '...'; }
+}
+
+.boot-bar {
+  width: 320px;
+  height: 20px;
+  border: 3px solid var(--ink);
+  margin: 24px auto;
+  background: #000;
+  padding: 2px;
+}
+
+.boot-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: repeating-linear-gradient(45deg, var(--accent-pink), var(--accent-pink) 6px, var(--accent-yellow) 6px, var(--accent-yellow) 12px);
+  animation: fillbar 1.6s steps(20, end) forwards;
+}
+
+@keyframes fillbar {
+  to { width: 100%; }
+}
+
+.press-start {
+  margin-top: 18px;
+  font-size: 10px;
+  color: var(--ink);
+  animation: blink 1s steps(1) infinite;
+}
+
+@keyframes blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+/* ---------------- HUD ---------------- */
+
+#hud {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  background: rgba(11, 14, 26, 0.85);
+  border-bottom: 3px solid var(--ink);
+  backdrop-filter: blur(2px);
+}
+
+.hud-left, .hud-right {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.hud-life {
+  color: var(--accent-pink);
+}
+
+#hud-nav {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+  overflow-x: auto;
+}
+
+#hud-nav button {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  background: var(--panel-bg);
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  padding: 6px 8px;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 #000;
+  transition: transform 0.1s, background 0.1s;
+}
+
+#hud-nav button:hover {
+  background: var(--accent-purple);
+  transform: translate(-1px, -1px);
+}
+
+#hud-nav button.active {
+  background: var(--accent-cyan);
+  color: #000;
+}
+
+#hud-nav button:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 #000;
+}
+
+#hud-score {
+  color: var(--accent-yellow);
+}
+
+/* ---------------- Progress bar ---------------- */
+
+#progress-track {
+  position: fixed;
+  top: 54px;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: #000;
+  z-index: 49;
+  border-bottom: 2px solid var(--ink);
+}
+
+#progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--accent-pink), var(--accent-yellow), var(--accent-cyan));
+}
+
+/* ---------------- Layout ---------------- */
+
+#content {
+  position: relative;
+  z-index: 10;
+}
+
+.stage {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 100px 20px 60px;
+  position: relative;
+}
+
+.level-tag {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  color: var(--accent-yellow);
+  background: #000;
+  border: 2px solid var(--accent-yellow);
+  padding: 6px 12px;
+  margin-bottom: 22px;
+  letter-spacing: 1px;
+}
+
+/* ---------------- Panels ---------------- */
+
+.panel {
+  width: min(880px, 92vw);
+  background: var(--panel-bg);
+  border: 4px solid var(--panel-border);
+  box-shadow: var(--shadow-hard), 0 0 0 4px var(--bg-deep), 0 0 40px rgba(57,255,157,0.08);
+  padding: 36px 40px;
+  position: relative;
+}
+
+.panel::before {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border: 2px dashed rgba(244,241,222,0.25);
+  pointer-events: none;
+}
+
+.hero-panel {
+  text-align: center;
+}
+
+.section-title {
+  font-size: 18px;
+  color: var(--accent-cyan);
+  margin: 0 0 24px;
+  text-shadow: 3px 3px 0 #000;
+}
+
+.section-title.center {
+  text-align: center;
+}
+
+.body-text {
+  font-size: 22px;
+  line-height: 1.6;
+  margin: 0 0 18px;
+  color: var(--ink);
+}
+
+.body-text.small {
+  font-size: 18px;
+  opacity: 0.85;
+}
+
+.body-text.center {
+  text-align: center;
+}
+
+.body-text strong {
+  color: var(--accent-yellow);
+}
+
+/* ---------------- Hero ---------------- */
+
+.glitch {
+  font-size: 26px;
+  color: var(--ink);
+  text-shadow: 3px 0 var(--accent-pink), -3px 0 var(--accent-cyan);
+  margin: 0 0 18px;
+  animation: glitch 4s infinite;
+}
+
+@keyframes glitch {
+  0%, 92%, 100% { text-shadow: 3px 0 var(--accent-pink), -3px 0 var(--accent-cyan); }
+  93% { text-shadow: -4px 1px var(--accent-pink), 4px -1px var(--accent-cyan); }
+  95% { text-shadow: 4px -2px var(--accent-yellow), -4px 2px var(--accent-blue); }
+}
+
+.subtitle {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 12px;
+  color: var(--accent-yellow);
+  margin: 0 0 26px;
+}
+
+.typewriter {
+  overflow: hidden;
+  white-space: nowrap;
+  border-right: 3px solid var(--accent-yellow);
+  width: 0;
+  margin-left: auto;
+  margin-right: auto;
+  animation: typing 2.2s steps(40, end) forwards, caret 0.7s step-end infinite;
+}
+
+@keyframes typing {
+  from { width: 0; }
+  to { width: 47ch; }
+}
+
+@keyframes caret {
+  50% { border-color: transparent; }
+}
+
+.hero-desc {
+  font-size: 22px;
+  line-height: 1.7;
+  margin: 0 0 28px;
+}
+
+.tag {
+  display: inline-block;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  padding: 5px 8px;
+  margin: 0 4px;
+  border: 2px solid #000;
+  box-shadow: 2px 2px 0 #000;
+  color: #000;
+  vertical-align: middle;
+}
+
+.tag-java { background: var(--accent-pink); }
+.tag-csharp { background: var(--accent-purple); color: var(--ink); }
+.tag-angular { background: var(--accent-blue); }
+.tag-react { background: var(--accent-cyan); }
+
+.cta-row, .contact-row {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.btn-8bit {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 11px;
+  color: var(--ink);
+  background: var(--panel-bg);
+  border: 3px solid var(--ink);
+  padding: 14px 18px;
+  text-decoration: none;
+  box-shadow: 4px 4px 0 #000;
+  transition: transform 0.1s, box-shadow 0.1s, background 0.15s;
+  display: inline-block;
+}
+
+.btn-8bit:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 #000;
+  background: var(--accent-purple);
+}
+
+.btn-8bit:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 #000;
+}
+
+.btn-8bit.primary {
+  background: var(--accent-cyan);
+  color: #000;
+}
+
+.btn-8bit.primary:hover {
+  background: var(--accent-pink);
+  color: #000;
+}
+
+.scroll-hint {
+  position: absolute;
+  bottom: 28px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 11px;
+  color: var(--accent-cyan);
+  animation: bob 1.4s ease-in-out infinite;
+}
+
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(8px); }
+}
+
+/* ---------------- Stat grid (About) ---------------- */
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  margin-top: 24px;
+}
+
+.stat-box {
+  border: 3px solid var(--ink);
+  background: #0c0f1c;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: 3px 3px 0 #000;
+}
+
+.stat-label {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  color: var(--accent-yellow);
+}
+
+.stat-value {
+  font-size: 22px;
+  color: var(--accent-cyan);
+}
+
+/* ---------------- Quest log (Career) ---------------- */
+
+.quest-log {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 22px;
+}
+
+.quest-item {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  border: 3px solid var(--ink);
+  background: #0c0f1c;
+  padding: 16px;
+  box-shadow: 3px 3px 0 #000;
+}
+
+.quest-icon {
+  font-size: 28px;
+  flex-shrink: 0;
+}
+
+.quest-item h3 {
+  font-size: 13px;
+  color: var(--accent-pink);
+  margin: 0 0 6px;
+}
+
+.quest-item p {
+  font-size: 19px;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ---------------- Inventory (Stack) ---------------- */
+
+.inventory {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  margin-top: 10px;
+}
+
+.inv-column h3 {
+  font-size: 12px;
+  color: var(--accent-blue);
+  margin: 0 0 12px;
+  border-bottom: 2px solid var(--accent-blue);
+  padding-bottom: 8px;
+}
+
+.inv-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.inv-list li {
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  padding: 6px 8px;
+  border: 2px solid rgba(244,241,222,0.3);
+  background: rgba(0,0,0,0.25);
+}
+
+.inv-list li::after {
+  content: attr(data-power) '%';
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--accent-yellow);
+}
+
+.inv-list.plain li {
+  border: none;
+  background: none;
+  padding: 4px 0;
+}
+
+.inv-list.plain li::after {
+  content: none;
+}
+
+.inv-list.plain li::before {
+  content: '★ ';
+  color: var(--accent-yellow);
+}
+
+.inv-icon {
+  font-size: 18px;
+}
+
+/* ---------------- Badges (Quality / Infra) ---------------- */
+
+.badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.badge {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  background: #0c0f1c;
+  color: var(--accent-cyan);
+  border: 2px solid var(--accent-cyan);
+  padding: 10px 12px;
+  box-shadow: 2px 2px 0 #000;
+}
+
+/* ---------------- Pipeline (Cloud) ---------------- */
+
+.pipeline {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin: 24px 0;
+}
+
+.pipe-node {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  background: var(--accent-purple);
+  color: #000;
+  border: 2px solid #000;
+  padding: 10px 10px;
+  text-align: center;
+  box-shadow: 2px 2px 0 #000;
+  min-width: 90px;
+}
+
+.pipe-arrow {
+  color: var(--accent-yellow);
+  font-size: 22px;
+}
+
+/* ---------------- Armory grid (Azure services) ---------------- */
+
+.armory-category {
+  margin-bottom: 22px;
+}
+
+.armory-category h3 {
+  font-size: 12px;
+  color: var(--accent-purple);
+  margin: 0 0 10px;
+  border-bottom: 2px solid var(--accent-purple);
+  padding-bottom: 8px;
+}
+
+.armory-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.armory-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 17px;
+  border: 2px solid var(--ink);
+  background: #0c0f1c;
+  padding: 10px;
+  box-shadow: 2px 2px 0 #000;
+  transition: background 0.15s, transform 0.15s;
+}
+
+.armory-item:hover {
+  background: var(--accent-pink);
+  color: #000;
+  transform: translate(-2px, -2px);
+}
+
+.armory-icon {
+  font-size: 20px;
+}
+
+/* ---------------- Final / Contact ---------------- */
+
+.blink {
+  animation: blink 0.8s steps(1) infinite;
+}
+
+.footer-note {
+  margin-top: 28px;
+  font-size: 14px;
+  text-align: center;
+  opacity: 0.7;
+}
+
+/* ---------------- Reveal animation (JS toggles .visible) ---------------- */
+
+.panel, .level-tag {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.stage.in-view .panel,
+.stage.in-view .level-tag {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ---------------- Clickable skills + description modal ---------------- */
+
+.tag,
+.inv-list li,
+.armory-item,
+.badge,
+.pipe-node {
+  cursor: pointer;
+  transition: transform 0.12s, box-shadow 0.12s, background 0.12s, border-color 0.12s;
+}
+
+.tag:hover,
+.inv-list li:hover,
+.armory-item:hover,
+.badge:hover,
+.pipe-node:hover {
+  transform: translate(-2px, -2px);
+}
+
+.inv-list li:hover {
+  border-color: var(--accent-cyan);
+}
+
+.badge:hover {
+  background: var(--accent-cyan);
+  color: #000;
+}
+
+.pipe-node:hover {
+  box-shadow: 4px 4px 0 #000;
+}
+
+.skill-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(5, 6, 12, 0.78);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.skill-modal.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.skill-modal-panel {
+  position: relative;
+  width: min(480px, 92vw);
+  background: var(--panel-bg);
+  border: 4px solid var(--panel-border);
+  box-shadow: var(--shadow-hard);
+  padding: 32px 28px;
+  transform: translateY(16px) scale(0.96);
+  transition: transform 0.2s ease;
+}
+
+.skill-modal.visible .skill-modal-panel {
+  transform: translateY(0) scale(1);
+}
+
+.skill-modal-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 12px;
+  background: #000;
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  padding: 6px 9px;
+  cursor: pointer;
+}
+
+.skill-modal-close:hover {
+  background: var(--accent-pink);
+  color: #000;
+}
+
+.skill-modal-title {
+  font-size: 14px;
+  color: var(--accent-cyan);
+  margin: 0 0 18px;
+  padding-right: 24px;
+  text-shadow: 2px 2px 0 #000;
+}
+
+.skill-modal-desc {
+  font-size: 22px;
+  line-height: 1.6;
+  margin: 0;
+  color: var(--ink);
+}
+
+/* ---------------- Responsive ---------------- */
+
+@media (max-width: 720px) {
+  .inventory, .armory-grid {
+    grid-template-columns: 1fr;
+  }
+  .stat-grid {
+    grid-template-columns: 1fr;
+  }
+  #hud {
+    flex-wrap: wrap;
+  }
+  .hud-left, .hud-right {
+    order: 3;
+    width: 100%;
+    text-align: center;
+    margin-top: 4px;
+  }
+  .panel {
+    padding: 24px 20px;
+  }
+  .glitch {
+    font-size: 18px;
+  }
+  .typewriter {
+    animation: typing 2.2s steps(40, end) forwards, caret 0.7s step-end infinite;
+    width: 100%;
+    white-space: normal;
+    border-right: none;
+  }
+}
