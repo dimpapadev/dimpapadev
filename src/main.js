@@ -2,6 +2,7 @@ import './style.css'
 import { PixelWorld } from './scene.js'
 import avatarImgSrc from './assets/avatar.png'
 import vinylGifSrc from './assets/916863c919165c049a254acdf2e4753e.gif'
+import bearImgSrc from './assets/Radiohead-Logo-2000.png'
 
 const canvas = document.getElementById('bg')
 const world = new PixelWorld(canvas)
@@ -11,6 +12,11 @@ avatarImg.src = avatarImgSrc
 
 const vinylGif = document.getElementById('vinyl-gif')
 vinylGif.src = vinylGifSrc
+
+const bearSprites = Array.from(document.querySelectorAll('.bear-sprite'))
+bearSprites.forEach((img) => {
+  img.src = bearImgSrc
+})
 
 const sections = Array.from(document.querySelectorAll('.stage'))
 const navButtons = Array.from(document.querySelectorAll('#hud-nav button'))
@@ -188,6 +194,15 @@ function tick() {
   const charHeadAnchor = world.getCharacterHeadAnchor()
   speechBubble.style.left = `${charHeadAnchor.x}px`
   speechBubble.style.top = `${charHeadAnchor.y}px`
+
+  const bearAnchors = world.getBearAnchors()
+  bearSprites.forEach((img, i) => {
+    const anchor = bearAnchors[i]
+    img.style.left = `${anchor.x}px`
+    img.style.top = `${anchor.y}px`
+    img.style.opacity = anchor.opacity
+    img.style.transform = `translate(-50%, -50%) scale(${anchor.scale})`
+  })
 
   requestAnimationFrame(tick)
 }

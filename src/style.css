@@ -220,6 +220,20 @@ h1, h2, h3, .pixel-font {
   image-rendering: pixelated;
 }
 
+/* rendered as a smooth DOM overlay (like the dog/cat/avatar) rather than
+   inside the WebGL canvas, so it stays crisp instead of getting chunked by
+   that canvas's low internal resolution + pixelated upscaling. */
+.bear-sprite {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 4;
+  width: 9vh;
+  height: auto;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
 /* the world camera maps 1 world unit to (innerHeight / 2) px on both axes, and
    the dog's world footprint is 0.16 world units tall, so 0.16 * innerHeight/2
    = 8% of viewport height. Width follows the SVG's own (non-square) aspect. */
@@ -538,6 +552,15 @@ h1, h2, h3, .pixel-font {
   position: relative;
 }
 
+/* extra scroll room on the hero stage so the full background scene (sun,
+   skyline, signs, ship, avatar, table) stays visible for longer before the
+   About section's panel arrives — content stays pinned near the top so it's
+   still visible on first load rather than centering in the taller area. */
+#hero {
+  min-height: 180vh;
+  justify-content: flex-start;
+}
+
 .level-tag {
   font-family: 'Press Start 2P', monospace;
   font-size: 10px;
@@ -712,7 +735,7 @@ h1, h2, h3, .pixel-font {
 
 .scroll-hint {
   position: absolute;
-  bottom: 28px;
+  top: calc(100vh - 70px);
   font-family: 'Press Start 2P', monospace;
   font-size: 11px;
   color: var(--accent-cyan);

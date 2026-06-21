@@ -22,6 +22,11 @@ const THEMES = [
 // stays exactly as already tuned.
 const HORIZON_Y = -0.5
 
+// the bear logo image is 3840x2160 (1.778 aspect) — keep that ratio so it
+// doesn't get squashed into a square.
+const BEAR_H = 0.15
+const BEAR_W = BEAR_H * (3840 / 2160)
+
 function lerpColor(a, b, t) {
   const ca = new THREE.Color(a)
   const cb = new THREE.Color(b)
@@ -159,6 +164,57 @@ function makeGlowTexture() {
   ctx.fillStyle = grad
   ctx.fillRect(0, 0, size, size)
   return new THREE.CanvasTexture(c)
+}
+
+// a small retro pixel-art ship for the ambient "space invaders" scene —
+// a simple triangular hull with a glowing cockpit.
+// the classic arcade Space Invaders player cannon, drawn from a literal
+// pixel bitmap (1 = filled) so it reads as the actual game sprite rather
+// than a generic sci-fi ship.
+const SHIP_BITMAP = [
+  '0000001100000',
+  '0000011110000',
+  '0000011110000',
+  '0111111111110',
+  '1111111111111',
+  '1111111111111',
+  '1111111111111',
+  '1101111111011',
+]
+
+function makeShipTexture() {
+  const cell = 3
+  const w = SHIP_BITMAP[0].length * cell
+  const h = SHIP_BITMAP.length * cell
+  const c = document.createElement('canvas')
+  c.width = w
+  c.height = h
+  const ctx = c.getContext('2d')
+  ctx.fillStyle = '#39ff9d'
+  SHIP_BITMAP.forEach((row, y) => {
+    row.split('').forEach((bit, x) => {
+      if (bit === '1') ctx.fillRect(x * cell, y * cell, cell, cell)
+    })
+  })
+
+  const tex = new THREE.CanvasTexture(c)
+  tex.magFilter = THREE.NearestFilter
+  tex.minFilter = THREE.NearestFilter
+  return tex
+}
+
+// a tiny bright laser bolt, shared by every projectile instance.
+function makeBoltTexture() {
+  const c = document.createElement('canvas')
+  c.width = 6
+  c.height = 16
+  const ctx = c.getContext('2d')
+  ctx.fillStyle = '#9dfff0'
+  ctx.fillRect(1, 0, 4, 16)
+  const tex = new THREE.CanvasTexture(c)
+  tex.magFilter = THREE.NearestFilter
+  tex.minFilter = THREE.NearestFilter
+  return tex
 }
 
 const SKYLINE_W = 1400
@@ -317,6 +373,7 @@ export class PixelWorld {
     this._buildCharacter()
     this._buildCat()
     this._buildDeskProp()
+    this._buildSpaceInvaders()
     this._buildDog()
 
     this._resize()
@@ -697,6 +754,151 @@ export class PixelWorld {
     return this._projectToScreen(this.deskPropAnchor.x, this.deskPropAnchor.y + 0.34)
   }
 
+  // an ambient (non-interactive) "space invaders" scene: a ship drifts back
+  // and forth across the sky, periodically firing at one of several bear
+  // targets scattered above the skyline. A hit bear flashes, fades out, and
+  // respawns elsewhere a couple seconds later.
+  //
+  // The bears themselves are NOT rendered in the WebGL scene — this canvas
+  // is intentionally rendered at a fraction of screen resolution and then
+  // scaled up with `image-rendering: pixelated` for the chunky retro look,
+  // which would make the bear logo's fine linework look broken/blocky no
+  // matter how its texture is filtered. So the bears are tracked here as
+  // plain data (like the dog/cat) and rendered as smooth DOM <img> overlays
+  // (see #bear-swarm in index.html/main.js) that read getBearAnchors() each
+  // frame, the same pattern already used for the dog/cat/avatar.
+  _buildSpaceInvaders() {
+    const shipMat = new THREE.SpriteMaterial({ map: makeShipTexture(), transparent: true, depthWrite: false })
+    this.ship = new THREE.Sprite(shipMat)
+    this.ship.scale.set(0.09 * (13 / 8), 0.09, 1)
+    this.ship.position.set(-1, 0.02, -1.7) // flies below the bears' spawn baseline (y: 0.12), shooting up at them
+    this.scene.add(this.ship)
+    this.shipDir = 1
+    this.shipFireTimer = 1.5
+
+    this.boltMat = new THREE.SpriteMaterial({ map: makeBoltTexture(), transparent: true, depthWrite: false })
+    this.projectiles = []
+
+    this.bears = []
+    for (let i = 0; i < 4; i++) {
+      const bear = { x: 0, y: 0, alive: true, opacity: 1, scale: 1, hitFlash: 0, respawnTimer: 0 }
+      this._respawnBear(bear, true)
+      this.bears.push(bear)
+    }
+  }
+
+  // screen-space position + opacity/scale for every bear, for the DOM
+  // overlay to render (mirrors getDogAnchor()'s world->screen projection).
+  getBearAnchors() {
+    return this.bears.map((bear) => ({
+      ...this._projectToScreen(bear.x, bear.y),
+      opacity: bear.opacity,
+      scale: bear.scale,
+    }))
+  }
+
+  // the play area for the ship/bears is the gap between the two hanging
+  // neon signs (their inner edges), not the full screen width.
+  _getPlayAreaX() {
+    const breathingRoom = 0.18
+    if (this.signs && this.signs.length === 2) {
+      const left = this.signs.find((s) => s.userData.side === 'left')
+      const right = this.signs.find((s) => s.userData.side === 'right')
+      const leftInner = left.position.x + (left.userData.boxW || 0.3) / 2 + breathingRoom
+      const rightInner = right.position.x - (right.userData.boxW || 0.3) / 2 - breathingRoom
+      if (rightInner > leftInner) return { min: leftInner, max: rightInner }
+    }
+    const edge = (this.aspect || 1.6) - 0.5 - breathingRoom
+    return { min: -edge, max: edge }
+  }
+
+  _respawnBear(bear, immediate) {
+    const { min, max } = this._getPlayAreaX()
+    // mostly hug the top of the sky, just under the HUD header, and keep
+    // some spacing from other live bears so they read as sparse, not clumped
+    let x
+    for (let attempt = 0; attempt < 6; attempt++) {
+      x = min + Math.random() * (max - min)
+      const tooClose = this.bears.some(
+        (other) => other !== bear && other.alive && Math.abs(other.x - x) < (max - min) / (this.bears.length + 1)
+      )
+      if (!tooClose) break
+    }
+    bear.x = x
+    bear.y = 0.58 + Math.random() * 0.24
+    bear.opacity = 1
+    bear.scale = 1
+    bear.alive = true
+    bear.hitFlash = 0
+    if (!immediate) bear.respawnTimer = 0
+  }
+
+  // fires straight up from the ship's current position — classic Space
+  // Invaders aiming, not an angled shot toward a target.
+  _spawnProjectile() {
+    const bolt = new THREE.Sprite(this.boltMat)
+    bolt.scale.set(0.025, 0.09, 1)
+    bolt.position.set(this.ship.position.x, this.ship.position.y + 0.08, -1.69)
+    this.scene.add(bolt)
+    this.projectiles.push({ sprite: bolt, speed: 1.3 })
+  }
+
+  _hitBear(bear) {
+    bear.alive = false
+    bear.hitFlash = 0.25
+    bear.respawnTimer = 1.8 + Math.random() * 1.6
+  }
+
+  _updateSpaceInvaders(dt) {
+    const { min, max } = this._getPlayAreaX()
+    const margin = 0.04
+    this.ship.position.x += this.shipDir * dt * 0.35
+    if (this.ship.position.x > max - margin || this.ship.position.x < min + margin) {
+      this.shipDir *= -1
+      this.ship.position.x = Math.max(min + margin, Math.min(max - margin, this.ship.position.x))
+    }
+
+    this.shipFireTimer -= dt
+    if (this.shipFireTimer <= 0) {
+      if (this.bears.some((b) => b.alive)) this._spawnProjectile()
+      this.shipFireTimer = 1.0 + Math.random() * 1.4
+    }
+
+    this.projectiles = this.projectiles.filter((p) => {
+      p.sprite.position.y += p.speed * dt
+      if (p.sprite.position.y > 0.85) {
+        this.scene.remove(p.sprite)
+        return false
+      }
+      const hit = this.bears.find(
+        (b) =>
+          b.alive &&
+          Math.abs(b.x - p.sprite.position.x) < BEAR_W * 0.45 &&
+          Math.abs(b.y - p.sprite.position.y) < BEAR_H * 0.5
+      )
+      if (hit) {
+        this._hitBear(hit)
+        this.scene.remove(p.sprite)
+        return false
+      }
+      return true
+    })
+
+    this.bears.forEach((bear) => {
+      if (bear.alive) return
+      if (bear.hitFlash > 0) {
+        bear.hitFlash -= dt
+        const t = Math.max(0, bear.hitFlash / 0.25)
+        bear.scale = 1 + (1 - t) * 0.6
+        bear.opacity = t
+      } else {
+        bear.opacity = 0
+      }
+      bear.respawnTimer -= dt
+      if (bear.respawnTimer <= 0) this._respawnBear(bear)
+    })
+  }
+
   // the character sprite is centered on its own position (THREE.Sprite default
   // anchor), so for a speech bubble we want a point above its head, not its waist.
   getCharacterHeadAnchor() {
@@ -811,6 +1013,7 @@ export class PixelWorld {
     }
 
     if (!this.dogPaused) this._updateDog(dt)
+    this._updateSpaceInvaders(dt)
 
     this.renderer.render(this.scene, this.camera)
   }
