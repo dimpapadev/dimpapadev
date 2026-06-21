@@ -6,13 +6,14 @@
   --ink: #f4f1de;
   --bg-deep: #0b0e1a;
   --panel-bg: #14182a;
-  --panel-border: #f4f1de;
+  --panel-border: #3fa9ff;
   --accent-cyan: #39ff9d;
   --accent-pink: #ff3d7f;
   --accent-yellow: #ffd23f;
   --accent-blue: #3fa9ff;
   --accent-purple: #b16cff;
   --shadow-hard: 6px 6px 0 #000;
+  --neon-glow: 0 0 6px rgba(63, 169, 255, 0.7), 0 0 22px rgba(255, 61, 127, 0.35);
   --pixel: 4px;
 
   font-family: 'VT323', monospace;
@@ -146,6 +147,79 @@ h1, h2, h3, .pixel-font {
   left: 14px;
 }
 
+.avatar-illustration {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 4;
+  height: 22vh;
+  width: 22vh;
+  transform: translate(-50%, -71%);
+  filter: drop-shadow(4px 6px 10px rgba(0, 0, 0, 0.5));
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  transition: transform 0.2s ease;
+}
+
+.avatar-img.nudge {
+  transform: scale(1.06) rotate(-2deg);
+}
+
+.now-playing {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 7;
+  transform: translate(-50%, -100%);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  color: var(--accent-pink);
+  text-shadow: 2px 2px 0 #000;
+  background: rgba(10, 10, 20, 0.75);
+  border: 2px solid var(--accent-pink);
+  padding: 5px 8px;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: now-playing-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes now-playing-pulse {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 1; }
+}
+
+.desk-prop {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 4;
+  width: 15vh;
+  height: 12vh;
+  transform: translate(-50%, -44%);
+  filter: drop-shadow(3px 4px 0 rgba(0, 0, 0, 0.45));
+}
+
+.desk-table-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.vinyl-gif {
+  position: absolute;
+  left: 27%;
+  bottom: 71%;
+  width: 46%;
+  transform: rotate(-6deg);
+  transform-origin: 50% 100%;
+  image-rendering: pixelated;
+}
+
 /* the world camera maps 1 world unit to (innerHeight / 2) px on both axes, and
    the dog's world footprint is 0.16 world units tall, so 0.16 * innerHeight/2
    = 8% of viewport height. Width follows the SVG's own (non-square) aspect. */
@@ -234,6 +308,16 @@ h1, h2, h3, .pixel-font {
   height: 8vh;
   transform: translate(-50%, -78%);
   filter: drop-shadow(3px 4px 0 rgba(0, 0, 0, 0.45));
+}
+
+.cat-bed-svg {
+  position: absolute;
+  left: 50%;
+  bottom: -10%;
+  width: 210%;
+  height: 62%;
+  transform: translate(-50%, 0);
+  z-index: -1;
 }
 
 .cat-svg {
@@ -471,7 +555,7 @@ h1, h2, h3, .pixel-font {
   width: min(880px, 92vw);
   background: var(--panel-bg);
   border: 4px solid var(--panel-border);
-  box-shadow: var(--shadow-hard), 0 0 0 4px var(--bg-deep), 0 0 40px rgba(57,255,157,0.08);
+  box-shadow: var(--shadow-hard), 0 0 0 4px var(--bg-deep), var(--neon-glow);
   padding: 36px 40px;
   position: relative;
 }
@@ -480,7 +564,7 @@ h1, h2, h3, .pixel-font {
   content: '';
   position: absolute;
   inset: 8px;
-  border: 2px dashed rgba(244,241,222,0.25);
+  border: 2px dashed rgba(255, 61, 127, 0.25);
   pointer-events: none;
 }
 

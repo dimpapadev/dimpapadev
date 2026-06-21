@@ -1,8 +1,16 @@
 import './style.css'
 import { PixelWorld } from './scene.js'
+import avatarImgSrc from './assets/avatar.png'
+import vinylGifSrc from './assets/916863c919165c049a254acdf2e4753e.gif'
 
 const canvas = document.getElementById('bg')
 const world = new PixelWorld(canvas)
+
+const avatarImg = document.getElementById('avatar-img')
+avatarImg.src = avatarImgSrc
+
+const vinylGif = document.getElementById('vinyl-gif')
+vinylGif.src = vinylGifSrc
 
 const sections = Array.from(document.querySelectorAll('.stage'))
 const navButtons = Array.from(document.querySelectorAll('#hud-nav button'))
@@ -75,6 +83,7 @@ skillEls.forEach((el) => {
   el.addEventListener('mouseenter', () => {
     world.setGesture(true)
     world.setDogPaused(true)
+    avatarImg.classList.add('nudge')
     speechBubble.classList.add('visible')
     dogSpeechBubble.classList.add('visible')
     catSpeechBubble.classList.add('visible')
@@ -82,6 +91,7 @@ skillEls.forEach((el) => {
   el.addEventListener('mouseleave', () => {
     world.setGesture(false)
     world.setDogPaused(false)
+    avatarImg.classList.remove('nudge')
     speechBubble.classList.remove('visible')
     dogSpeechBubble.classList.remove('visible')
     catSpeechBubble.classList.remove('visible')
@@ -129,6 +139,19 @@ function updateCatPosition() {
 }
 window.addEventListener('resize', updateCatPosition)
 
+// ---------------- Desk prop overlay position (static, tracks the world anchor) ----------------
+const deskProp = document.getElementById('desk-prop')
+const nowPlaying = document.getElementById('now-playing')
+function updateDeskPropPosition() {
+  const anchor = world.getDeskPropAnchor()
+  deskProp.style.left = `${anchor.x}px`
+  deskProp.style.top = `${anchor.y}px`
+  const labelAnchor = world.getDeskPropLabelAnchor()
+  nowPlaying.style.left = `${labelAnchor.x}px`
+  nowPlaying.style.top = `${labelAnchor.y}px`
+}
+window.addEventListener('resize', updateDeskPropPosition)
+
 // ---------------- Scroll progress -> scene + HUD ----------------
 function onScroll() {
   const scrollTop = window.scrollY
@@ -145,8 +168,13 @@ onScroll()
 
 // ---------------- Animation loop ----------------
 const dogIllustration = document.getElementById('dog-illustration')
+const avatarIllustration = document.getElementById('avatar-illustration')
 function tick() {
   world.update()
+
+  const charAnchor = world.getCharacterAnchor()
+  avatarIllustration.style.left = `${charAnchor.x}px`
+  avatarIllustration.style.top = `${charAnchor.y}px`
 
   const dogAnchor = world.getDogAnchor()
   dogIllustration.style.left = `${dogAnchor.x}px`
@@ -164,4 +192,5 @@ function tick() {
   requestAnimationFrame(tick)
 }
 updateCatPosition()
+updateDeskPropPosition()
 tick()

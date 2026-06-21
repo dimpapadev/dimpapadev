@@ -1,4 +1,6 @@
 import * as THREE from 'three'
+import signImgLeftSrc from './assets/image.png'
+import signImgRightSrc from './assets/images.jpg'
 
 // Per-level color themes: [sky top, sky bottom, mountain, accent]
 const THEMES = [
@@ -13,100 +15,271 @@ const THEMES = [
   { sky1: 0x0b0e1a, sky2: 0x1a0e2a, mountain: 0x150f28, accent: 0xff3d7f }, // contact
 ]
 
+// the floor/horizon line was raised from -0.84 to -0.5 to give the
+// perspective grid enough room to read as an angled floor rather than a
+// flat sliver — every world-space anchor below was shifted by the same
+// +0.34 so relative spacing (e.g. the avatar's chair touching this line)
+// stays exactly as already tuned.
+const HORIZON_Y = -0.5
+
 function lerpColor(a, b, t) {
   const ca = new THREE.Color(a)
   const cb = new THREE.Color(b)
   return ca.lerp(cb, t)
 }
 
-function px(ctx, x, y, w, h, color) {
-  ctx.fillStyle = color
-  ctx.fillRect(x, y, w, h)
+// shared dimensions + line layout for the converging perspective grid, so
+// the fine grid and the brighter "beam" overlay line up exactly — lines fan
+// out from a vanishing point at top-center (under the sun) to the bottom
+// edge (closest to the viewer), like a road/runway receding into the horizon.
+const GRID_W = 800
+const GRID_H = 200
+
+function buildGridLines() {
+  const vanishX = GRID_W / 2
+  const count = 14
+  const lines = []
+  for (let i = -count; i <= count; i++) {
+    lines.push({
+      topX: vanishX + i * 5,
+      bottomX: vanishX + i * 34,
+      accent: i % 3 === 0,
+    })
+  }
+  return lines
 }
 
-// 32x32 hero sprite sheet. pose: 'idle0' | 'idle1' (walk bob) | 'point0' | 'point1' (gesturing at a skill)
-function makeCharacterTexture(pose) {
+function makeGridTexture(lines) {
   const c = document.createElement('canvas')
-  c.width = 32
-  c.height = 32
+  c.width = GRID_W
+  c.height = GRID_H
   const ctx = c.getContext('2d')
-  ctx.imageSmoothingEnabled = false
-  ctx.clearRect(0, 0, 32, 32)
+  ctx.fillStyle = '#0a0a1c'
+  ctx.fillRect(0, 0, GRID_W, GRID_H)
 
-  const skin = '#f3c89a'
-  const skinShade = '#d9a877'
-  const hair = '#2a1f3d'
-  const hairHi = '#40325c'
-  const shirt = '#2f8fe0'
-  const shirtShade = '#1f699c'
-  const shirtHi = '#6fc1ff'
-  const pants = '#181028'
-  const pantsShade = '#0d0818'
-  const shoe = '#100a18'
-  const eye = '#181018'
+  ctx.strokeStyle = '#2f3df0'
+  ctx.lineWidth = 2
+  lines.forEach(({ topX, bottomX }) => {
+    ctx.beginPath()
+    ctx.moveTo(topX, 0)
+    ctx.lineTo(bottomX, GRID_H)
+    ctx.stroke()
+  })
 
-  const bob = pose === 'idle1' ? 1 : 0
-  const pointing = pose === 'point0' || pose === 'point1'
-
-  // hair back
-  px(ctx, 11, 3 + bob, 10, 3, hair)
-  // head
-  px(ctx, 12, 5 + bob, 8, 7, skin)
-  px(ctx, 12, 10 + bob, 8, 2, skinShade)
-  // hair top + fringe
-  px(ctx, 11, 4 + bob, 10, 2, hair)
-  px(ctx, 11, 6 + bob, 2, 2, hairHi)
-  // eyes
-  px(ctx, 14, 8 + bob, 1, 2, eye)
-  px(ctx, 18, 8 + bob, 1, 2, eye)
-
-  // torso / shirt
-  px(ctx, 10, 13 + bob, 12, 9, shirt)
-  px(ctx, 10, 13 + bob, 3, 9, shirtShade)
-  px(ctx, 19, 13 + bob, 3, 9, shirtShade)
-  px(ctx, 14, 13 + bob, 4, 2, shirtHi)
-
-  if (pointing) {
-    // left arm resting on hip
-    px(ctx, 8, 15, 3, 5, skin)
-    px(ctx, 8, 19, 3, 2, shirtShade)
-    // right arm raised diagonally, hand near head height — gesture frame alternates slightly
-    const handY = pose === 'point0' ? 6 : 5
-    px(ctx, 22, 14, 3, 5, shirt)
-    px(ctx, 24, 10, 3, 5, skin)
-    px(ctx, 25, handY, 3, 4, skin)
-  } else {
-    // arms at sides, swinging gently with walk bob
-    px(ctx, 8, 14 + bob, 3, 7, skin)
-    px(ctx, 8, 19 + bob, 3, 2, skinShade)
-    px(ctx, 21, 14 + (1 - bob), 3, 7, skin)
-    px(ctx, 21, 19 + (1 - bob), 3, 2, skinShade)
+  // horizontal rows bunch up near the top (the far horizon) and spread out
+  // near the bottom (closest to the viewer) for a forced-perspective feel
+  const rows = 8
+  for (let r = 1; r <= rows; r++) {
+    const t = r / rows
+    const y = GRID_H * (1 - Math.pow(1 - t, 2.4))
+    ctx.globalAlpha = 0.4 + t * 0.55
+    ctx.beginPath()
+    ctx.moveTo(0, y)
+    ctx.lineTo(GRID_W, y)
+    ctx.stroke()
   }
-
-  // legs (walk cycle alternation via bob)
-  px(ctx, 12, 22, 4, 6, bob === 0 ? pants : pantsShade)
-  px(ctx, 17, 22, 4, 6, bob === 0 ? pantsShade : pants)
-  // shoes
-  px(ctx, 11, 28 - bob, 5, 2, shoe)
-  px(ctx, 17, 28 - (1 - bob), 5, 2, shoe)
+  ctx.globalAlpha = 1
 
   const tex = new THREE.CanvasTexture(c)
   tex.magFilter = THREE.NearestFilter
   tex.minFilter = THREE.NearestFilter
-  tex.generateMipmaps = false
   return tex
 }
 
-function makeCloudTexture() {
+// the brighter "spotlight" verticals layered on top of the grid — same line
+// layout, just a subset drawn thicker on a transparent background, white so
+// it can be tinted per theme.
+function makeBeamsTexture(lines) {
   const c = document.createElement('canvas')
-  c.width = 32
-  c.height = 16
+  c.width = GRID_W
+  c.height = GRID_H
   const ctx = c.getContext('2d')
-  ctx.fillStyle = '#f4f1de'
-  ctx.fillRect(4, 6, 24, 6)
-  ctx.fillRect(8, 2, 16, 6)
-  ctx.fillRect(0, 8, 8, 4)
-  ctx.fillRect(24, 8, 8, 4)
+  ctx.fillStyle = '#ffffff'
+  lines
+    .filter((l) => l.accent)
+    .forEach(({ topX, bottomX }) => {
+      ctx.beginPath()
+      ctx.moveTo(topX - 1.5, 0)
+      ctx.lineTo(topX + 1.5, 0)
+      ctx.lineTo(bottomX + 5, GRID_H)
+      ctx.lineTo(bottomX - 5, GRID_H)
+      ctx.closePath()
+      ctx.fill()
+    })
+  const tex = new THREE.CanvasTexture(c)
+  tex.magFilter = THREE.NearestFilter
+  tex.minFilter = THREE.NearestFilter
+  return tex
+}
+
+// the classic retrowave sun: a disc with horizontal "scanline" cuts through
+// its lower half. Drawn white so it can be tinted with the level's accent
+// color each frame instead of baking one fixed color in.
+function makeSunTexture() {
+  const size = 256
+  const c = document.createElement('canvas')
+  c.width = size
+  c.height = size
+  const ctx = c.getContext('2d')
+  ctx.beginPath()
+  ctx.arc(size / 2, size / 2, size * 0.46, 0, Math.PI * 2)
+  ctx.fillStyle = '#ffffff'
+  ctx.fill()
+
+  ctx.globalCompositeOperation = 'destination-out'
+  let y = size * 0.52
+  let band = 9
+  let gap = 5
+  while (y < size * 0.95) {
+    ctx.fillRect(0, y, size, gap)
+    y += gap + band
+    band = Math.max(4, band - 0.4)
+    gap = Math.min(11, gap + 0.5)
+  }
+  ctx.globalCompositeOperation = 'source-over'
+
+  const tex = new THREE.CanvasTexture(c)
+  tex.magFilter = THREE.NearestFilter
+  tex.minFilter = THREE.NearestFilter
+  return tex
+}
+
+// a soft radial glow sprite sitting behind the sun (and reused, scaled flat,
+// as the glow along the horizon where the grid meets it).
+function makeGlowTexture() {
+  const size = 128
+  const c = document.createElement('canvas')
+  c.width = size
+  c.height = size
+  const ctx = c.getContext('2d')
+  const grad = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2)
+  grad.addColorStop(0, 'rgba(255,255,255,0.9)')
+  grad.addColorStop(0.5, 'rgba(255,255,255,0.3)')
+  grad.addColorStop(1, 'rgba(255,255,255,0)')
+  ctx.fillStyle = grad
+  ctx.fillRect(0, 0, size, size)
+  return new THREE.CanvasTexture(c)
+}
+
+const SKYLINE_W = 1400
+const SKYLINE_H = 260
+
+// generates the building rectangles once (facade shading + window cells) so
+// the facade texture and the tintable window-glow overlay stay perfectly
+// aligned — the sun's gap is carved out here too.
+function buildSkylineLayout() {
+  const w = SKYLINE_W
+  const h = SKYLINE_H
+  const baseShades = [
+    ['#1c1530', '#0e0a18'],
+    ['#221a38', '#120e1f'],
+    ['#170f26', '#0a0712'],
+  ]
+
+  // the sun sits at world x=0, radius 0.5, on a plane the same width as this
+  // canvas (14 world units across 1400px = 100px/unit) — keep a clear gap
+  // around its center so buildings frame it instead of overlapping it.
+  const gapStart = w / 2 - 95
+  const gapEnd = w / 2 + 95
+
+  const buildings = []
+  let x = 0
+  while (x < w) {
+    const bw = 55 + Math.random() * 65
+    if (x < gapEnd && x + bw > gapStart) {
+      x = gapEnd
+      continue
+    }
+
+    const bh = 90 + Math.random() * 150
+    const top = h - bh
+    const [lightShade, darkShade] = baseShades[Math.floor(Math.random() * baseShades.length)]
+    const roofDetail = Math.random() < 0.25 ? 'antenna' : Math.random() < 0.4 ? 'ac' : null
+
+    const windowCells = []
+    const cell = 10
+    for (let wx = x + 5; wx < x + bw - 8; wx += cell) {
+      const columnLit = Math.random() < 0.55
+      for (let wy = top + 8; wy < h - 8; wy += cell) {
+        windowCells.push({ wx, wy, lit: columnLit ? Math.random() < 0.75 : Math.random() < 0.12 })
+      }
+    }
+
+    buildings.push({ x, bw, bh, top, lightShade, darkShade, roofDetail, windowCells })
+    x += bw
+  }
+
+  return buildings
+}
+
+// the building facades (gradient shading, parapet caps, panel seams, roof
+// details) — opaque and never tinted, so they stay a constant dark
+// silhouette regardless of the current level theme.
+function makeSkylineTexture(buildings) {
+  const w = SKYLINE_W
+  const h = SKYLINE_H
+  const c = document.createElement('canvas')
+  c.width = w
+  c.height = h
+  const ctx = c.getContext('2d')
+
+  buildings.forEach(({ x, bw, bh, top, lightShade, darkShade, roofDetail }) => {
+    const grad = ctx.createLinearGradient(x, top, x, h)
+    grad.addColorStop(0, lightShade)
+    grad.addColorStop(1, darkShade)
+    ctx.fillStyle = grad
+    ctx.fillRect(x, top, bw - 3, bh)
+
+    ctx.fillStyle = 'rgba(255,255,255,0.15)'
+    ctx.fillRect(x, top, bw - 3, 2)
+
+    if (bw > 85) {
+      ctx.strokeStyle = 'rgba(0,0,0,0.4)'
+      ctx.lineWidth = 1
+      const seams = Math.floor(bw / 45)
+      for (let s = 1; s <= seams; s++) {
+        const sx = x + (bw / (seams + 1)) * s
+        ctx.beginPath()
+        ctx.moveTo(sx, top)
+        ctx.lineTo(sx, h)
+        ctx.stroke()
+      }
+    }
+
+    ctx.fillStyle = darkShade
+    if (roofDetail === 'antenna') {
+      ctx.fillRect(x + bw * 0.3, top - 18 - Math.random() * 20, 3, 18 + Math.random() * 20)
+    } else if (roofDetail === 'ac') {
+      ctx.fillRect(x + bw * 0.55, top - 8, bw * 0.2, 8)
+    }
+  })
+
+  const tex = new THREE.CanvasTexture(c)
+  tex.magFilter = THREE.NearestFilter
+  tex.minFilter = THREE.NearestFilter
+  return tex
+}
+
+// the windows only, drawn white on a transparent background so this layer
+// can be tinted to match the sun's color each frame (lit windows brighter,
+// dim ones lower-opacity, same hue either way).
+function makeWindowsTexture(buildings) {
+  const w = SKYLINE_W
+  const h = SKYLINE_H
+  const c = document.createElement('canvas')
+  c.width = w
+  c.height = h
+  const ctx = c.getContext('2d')
+  ctx.fillStyle = '#ffffff'
+
+  buildings.forEach(({ windowCells }) => {
+    windowCells.forEach(({ wx, wy, lit }) => {
+      ctx.globalAlpha = lit ? 0.95 : 0.25
+      ctx.fillRect(wx, wy, 4, 5)
+    })
+  })
+  ctx.globalAlpha = 1
+
   const tex = new THREE.CanvasTexture(c)
   tex.magFilter = THREE.NearestFilter
   tex.minFilter = THREE.NearestFilter
@@ -137,12 +310,13 @@ export class PixelWorld {
 
     this._buildSky()
     this._buildStars()
-    this._buildMountains(0x241b4a, 'far')
-    this._buildMountains(0x1a1336, 'near')
-    this._buildClouds()
+    this._buildSun()
+    this._buildSkyline()
+    this._buildSigns()
     this._buildGround()
     this._buildCharacter()
     this._buildCat()
+    this._buildDeskProp()
     this._buildDog()
 
     this._resize()
@@ -166,6 +340,32 @@ export class PixelWorld {
     this.camera.bottom = -1
     this.camera.updateProjectionMatrix()
     this.aspect = aspect
+
+    if (this.signs) {
+      this.signs.forEach((group) => {
+        group.position.x = group.userData.side === 'left' ? -aspect + 0.5 : aspect - 0.5
+      })
+    }
+    this._layoutSignArms()
+  }
+
+  // recomputes every mounting arm's span (screen edge -> box edge) and the
+  // bracket plate's position. Called on resize, and again after each sign's
+  // image finishes loading — the box size is only known once that happens,
+  // and the arms need to follow it instead of staying at a placeholder size.
+  _layoutSignArms() {
+    if (!this.signArms || this.aspect == null) return
+    const aspect = this.aspect
+    this.signArms.forEach(({ arm, bracket, group, side, edge }) => {
+      const boxW = group.userData.boxW
+      const boxH = group.userData.boxH
+      const boxEdgeX = group.position.x + (side === 'left' ? -boxW / 2 : boxW / 2)
+      const screenEdgeX = side === 'left' ? -aspect : aspect
+      const armY = group.position.y + (edge === 'top' ? boxH / 2 : -boxH / 2)
+      arm.position.set((boxEdgeX + screenEdgeX) / 2, armY, arm.position.z)
+      arm.scale.x = Math.max(0.001, Math.abs(screenEdgeX - boxEdgeX))
+      bracket.position.set(screenEdgeX + (side === 'left' ? 0.03 : -0.03), armY, bracket.position.z)
+    })
   }
 
   _buildSky() {
@@ -215,86 +415,205 @@ export class PixelWorld {
     this.scene.add(this.stars)
   }
 
-  _buildMountains(color, layer) {
-    const points = []
-    const segs = 14
-    const baseY = layer === 'far' ? -0.05 : -0.25
-    const amp = layer === 'far' ? 0.22 : 0.32
-    for (let i = 0; i <= segs; i++) {
-      const x = (i / segs) * 10 - 5
-      const y = baseY + Math.sin(i * 1.3 + (layer === 'far' ? 0 : 2)) * amp * 0.5 + (i % 2 === 0 ? amp : amp * 0.4)
-      points.push(new THREE.Vector2(x, y))
-    }
-    points.push(new THREE.Vector2(5, -1.2))
-    points.push(new THREE.Vector2(-5, -1.2))
-    const shape = new THREE.Shape(points)
-    const geo = new THREE.ShapeGeometry(shape)
-    const mat = new THREE.MeshBasicMaterial({ color })
-    const mesh = new THREE.Mesh(geo, mat)
-    mesh.position.z = layer === 'far' ? -3 : -2
-    mesh.userData.layer = layer
-    mesh.userData.baseColor = new THREE.Color(color)
-    this.scene.add(mesh)
-    if (layer === 'far') this.mountainsFar = mesh
-    else this.mountainsNear = mesh
+  // the retrowave sun: a tintable disc + a softer glow behind it, sitting
+  // sits closer to vertical center (rather than tucked at the horizon) so
+  // its upper dome reads clearly above the skyline, like the reference.
+  _buildSun() {
+    const sunTex = makeSunTexture()
+    const glowTex = makeGlowTexture()
+    const sunRadius = 0.5
+    const sunY = 0.05
+
+    const glowMat = new THREE.SpriteMaterial({ map: glowTex, transparent: true, depthWrite: false })
+    const glow = new THREE.Sprite(glowMat)
+    glow.scale.set(sunRadius * 3.6, sunRadius * 3.6, 1)
+    glow.position.set(0, sunY, -4.6)
+    this.scene.add(glow)
+
+    const sunMat = new THREE.SpriteMaterial({ map: sunTex, transparent: true, depthWrite: false })
+    const sun = new THREE.Sprite(sunMat)
+    sun.scale.set(sunRadius * 2, sunRadius * 2, 1)
+    sun.position.set(0, sunY, -4.5)
+    this.scene.add(sun)
+
+    this.sun = sun
+    this.sunGlow = glow
   }
 
-  _buildClouds() {
-    const tex = makeCloudTexture()
-    this.clouds = []
-    for (let i = 0; i < 6; i++) {
-      const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: 0.85 })
-      const sprite = new THREE.Sprite(mat)
-      sprite.scale.set(0.6, 0.3, 1)
-      sprite.position.set((Math.random() - 0.5) * 9, 0.45 + Math.random() * 0.4, -4)
-      sprite.userData.speed = 0.02 + Math.random() * 0.03
-      sprite.userData.offset = Math.random() * 10
-      this.scene.add(sprite)
-      this.clouds.push(sprite)
-    }
+  // a single skyline layer of flat-roofed buildings sitting in front of the
+  // sun but behind the grid floor, plus a tintable window-glow layer right
+  // on top of it (same building layout, so windows line up with facades).
+  // Static — no scroll — so the gap left around the sun stays put.
+  _buildSkyline() {
+    const layout = buildSkylineLayout()
+    const planeH = 0.95
+    const planeW = 14
+
+    const facadeGeo = new THREE.PlaneGeometry(planeW, planeH)
+    facadeGeo.translate(0, planeH / 2, 0)
+    const facadeMat = new THREE.MeshBasicMaterial({ map: makeSkylineTexture(layout), transparent: true })
+    const facade = new THREE.Mesh(facadeGeo, facadeMat)
+    facade.position.set(0, HORIZON_Y, -2)
+    this.scene.add(facade)
+    this.skyline = facade
+
+    const winGeo = new THREE.PlaneGeometry(planeW, planeH)
+    winGeo.translate(0, planeH / 2, 0)
+    const winMat = new THREE.MeshBasicMaterial({ map: makeWindowsTexture(layout), transparent: true })
+    const windows = new THREE.Mesh(winGeo, winMat)
+    windows.position.set(0, HORIZON_Y, -1.99)
+    this.scene.add(windows)
+    this.skylineWindows = windows
   }
 
+  // two cyberpunk signs hanging just under the HUD header near the left and
+  // right edges — each is a neon border sized to exactly match its image's
+  // own aspect ratio (no stretching, no empty letterbox gaps), bolted to the
+  // screen edge by two horizontal mounting arms (top + bottom) with bracket
+  // plates, rather than hanging from a cable above. Border/arms are repositioned
+  // in _resize() since the screen edges move with the camera's aspect.
+  _buildSigns() {
+    this.signs = []
+    this.signArms = []
+    const loader = new THREE.TextureLoader()
+    const configs = [
+      { side: 'left', color: 0xff2db3, imgSrc: signImgLeftSrc },
+      { side: 'right', color: 0x39ffe0, imgSrc: signImgRightSrc },
+    ]
+    const signCenterY = 0.58 // sits well clear of the fixed HUD header
+    const refArea = 0.16 // keeps both signs a comparable visual size regardless of aspect
+    const margin = 0.018
+    const borderThick = 0.014
+
+    configs.forEach(({ side, color, imgSrc }) => {
+      const group = new THREE.Group()
+      group.position.set(0, signCenterY, -1.9)
+      group.userData = { side, boxW: 0.32, boxH: 0.32 }
+      this.scene.add(group)
+      this.signs.push(group)
+
+      const imgMat = new THREE.MeshBasicMaterial({ transparent: true })
+      const imgPlane = new THREE.Mesh(new THREE.PlaneGeometry(0.32, 0.32), imgMat)
+      group.add(imgPlane)
+
+      const borderTop = new THREE.Mesh(new THREE.PlaneGeometry(0.1, borderThick), new THREE.MeshBasicMaterial({ color }))
+      const borderBottom = new THREE.Mesh(new THREE.PlaneGeometry(0.1, borderThick), new THREE.MeshBasicMaterial({ color }))
+      const borderLeft = new THREE.Mesh(new THREE.PlaneGeometry(borderThick, 0.1), new THREE.MeshBasicMaterial({ color }))
+      const borderRight = new THREE.Mesh(new THREE.PlaneGeometry(borderThick, 0.1), new THREE.MeshBasicMaterial({ color }))
+      ;[borderTop, borderBottom, borderLeft, borderRight].forEach((b) => {
+        b.position.z = 0.001
+        group.add(b)
+      })
+
+      const layout = (boxW, boxH) => {
+        group.userData.boxW = boxW
+        group.userData.boxH = boxH
+        imgPlane.geometry.dispose()
+        imgPlane.geometry = new THREE.PlaneGeometry(boxW, boxH)
+        const outerW = boxW + margin * 2
+        const outerH = boxH + margin * 2
+        borderTop.geometry.dispose()
+        borderTop.geometry = new THREE.PlaneGeometry(outerW, borderThick)
+        borderTop.position.set(0, boxH / 2 + margin / 2, 0)
+        borderBottom.geometry.dispose()
+        borderBottom.geometry = new THREE.PlaneGeometry(outerW, borderThick)
+        borderBottom.position.set(0, -boxH / 2 - margin / 2, 0)
+        borderLeft.geometry.dispose()
+        borderLeft.geometry = new THREE.PlaneGeometry(borderThick, outerH)
+        borderLeft.position.set(-boxW / 2 - margin / 2, 0, 0)
+        borderRight.geometry.dispose()
+        borderRight.geometry = new THREE.PlaneGeometry(borderThick, outerH)
+        borderRight.position.set(boxW / 2 + margin / 2, 0, 0)
+      }
+      layout(0.32, 0.32)
+
+      loader.load(imgSrc, (tex) => {
+        tex.colorSpace = THREE.SRGBColorSpace
+        imgMat.map = tex
+        imgMat.needsUpdate = true
+        const aspect = tex.image.width / tex.image.height
+        layout(Math.sqrt(refArea * aspect), Math.sqrt(refArea / aspect))
+        this._layoutSignArms()
+      })
+
+      // two horizontal mounting arms, attached exactly at the box's top and
+      // bottom edges (not a guessed offset) — each running from there to the
+      // screen edge with a bracket plate at the wall end. Exact span/edge
+      // position is computed in _layoutSignArms() once box size is known.
+      ;['top', 'bottom'].forEach((edge) => {
+        const arm = new THREE.Mesh(new THREE.PlaneGeometry(1, 0.02), new THREE.MeshBasicMaterial({ color: 0x2a2a36 }))
+        arm.position.set(0, signCenterY, -1.85)
+        this.scene.add(arm)
+
+        const bracket = new THREE.Mesh(new THREE.PlaneGeometry(0.05, 0.14), new THREE.MeshBasicMaterial({ color: 0x14141c }))
+        bracket.position.set(0, signCenterY, -1.84)
+        this.scene.add(bracket)
+
+        this.signArms.push({ arm, bracket, group, side, edge })
+      })
+    })
+  }
+
+  // a synthwave neon grid floor: converging lines fanning out from a
+  // vanishing point under the sun, plus a sparser layer of brighter "beam"
+  // lines on top (tinted per level theme). Static, like a single photo of
+  // the floor, with the horizon raised well above the bottom of the screen
+  // so the perspective actually has room to read.
   _buildGround() {
-    const group = new THREE.Group()
-    const tileCount = 40
-    const tileW = 0.3
-    for (let i = 0; i < tileCount; i++) {
-      const geo = new THREE.PlaneGeometry(tileW * 0.96, 0.16)
-      const shade = i % 2 === 0 ? 0x2a2046 : 0x231a3c
-      const mat = new THREE.MeshBasicMaterial({ color: shade })
-      const tile = new THREE.Mesh(geo, mat)
-      tile.position.set(-6 + i * tileW, -0.92, -1)
-      group.add(tile)
-    }
-    // top highlight strip
-    const stripGeo = new THREE.PlaneGeometry(14, 0.03)
-    const stripMat = new THREE.MeshBasicMaterial({ color: 0x39ff9d })
+    const lines = buildGridLines()
+    const groundH = HORIZON_Y + 1 // fills from the horizon down to the bottom of the viewport
+
+    const gridTex = makeGridTexture(lines)
+    const gridGeo = new THREE.PlaneGeometry(14, groundH)
+    gridGeo.translate(0, -groundH / 2, 0)
+    const gridMat = new THREE.MeshBasicMaterial({ map: gridTex })
+    const grid = new THREE.Mesh(gridGeo, gridMat)
+    grid.position.set(0, HORIZON_Y, -1)
+    this.scene.add(grid)
+
+    const beamTex = makeBeamsTexture(lines)
+    const beamGeo = new THREE.PlaneGeometry(14, groundH)
+    beamGeo.translate(0, -groundH / 2, 0)
+    const beamMat = new THREE.MeshBasicMaterial({ map: beamTex, transparent: true })
+    const beams = new THREE.Mesh(beamGeo, beamMat)
+    beams.position.set(0, HORIZON_Y, -0.99)
+    this.scene.add(beams)
+    this.beams = beams
+
+    // soft glow behind the horizon line, then the bright line itself —
+    // both tinted to match the sun/beams each frame
+    const glowGeo = new THREE.PlaneGeometry(14, 0.14)
+    const glowMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.3 })
+    const glow = new THREE.Mesh(glowGeo, glowMat)
+    glow.position.set(0, HORIZON_Y, -0.96)
+    this.scene.add(glow)
+    this.horizonGlow = glow
+
+    const stripGeo = new THREE.PlaneGeometry(14, 0.025)
+    const stripMat = new THREE.MeshBasicMaterial({ color: 0xfdf6ff })
     const strip = new THREE.Mesh(stripGeo, stripMat)
-    strip.position.set(0, -0.84, -0.95)
-    group.add(strip)
-    this.ground = group
-    this.scene.add(group)
+    strip.position.set(0, HORIZON_Y, -0.95)
+    this.scene.add(strip)
+
+    this.ground = grid
   }
 
+  // Like the dog and cat, the avatar is a smooth SVG DOM overlay (see
+  // #avatar-illustration in index.html / main.js) rather than a pixel-art
+  // sprite. This keeps a plain position object the bob/gesture logic below
+  // drives; getCharacterAnchor()/getCharacterHeadAnchor() project it to
+  // screen space for the DOM overlay and its speech bubble to follow.
   _buildCharacter() {
-    this.charFrames = {
-      idle0: makeCharacterTexture('idle0'),
-      idle1: makeCharacterTexture('idle1'),
-      point0: makeCharacterTexture('point0'),
-      point1: makeCharacterTexture('point1'),
-    }
-    const mat = new THREE.SpriteMaterial({ map: this.charFrames.idle0, transparent: true })
-    this.character = new THREE.Sprite(mat)
-    this.character.scale.set(0.24, 0.24, 1)
-    this.character.position.set(-0.55, -0.72, 0)
-    this.scene.add(this.character)
-    this._charFrameTimer = 0
-    this._charFrame = 0
+    this.character = { position: { x: -0.55, y: -0.38 } }
     this.characterGesture = false
   }
 
   setGesture(active) {
     this.characterGesture = !!active
+  }
+
+  getCharacterAnchor() {
+    return this._projectToScreen(this.character.position.x, this.character.position.y)
   }
 
   setDogPaused(paused) {
@@ -329,7 +648,7 @@ export class PixelWorld {
   // This keeps a plain position object that the state machine below drives;
   // getDogAnchor() projects it to screen space for the DOM overlay to follow.
   _buildDog() {
-    this.dog = { position: { x: -1.4, y: -0.78 } }
+    this.dog = { position: { x: -1.4, y: -0.44 } }
 
     this.dogState = 'walk'
     this.dogStateTimer = 0
@@ -349,7 +668,7 @@ export class PixelWorld {
   // world-space point the DOM overlay tracks, and what the dog's jump logic
   // measures against to know when to hop over her.
   _buildCat() {
-    this.catAnchor = { x: 0.5, y: -0.79 }
+    this.catAnchor = { x: 0.5, y: -0.45 }
   }
 
   // projects the (invisible) cat anchor to screen pixel coordinates for the DOM overlay.
@@ -362,10 +681,26 @@ export class PixelWorld {
     return this._projectToScreen(this.catAnchor.x, this.catAnchor.y + 0.18)
   }
 
+  // a small side table (with a vinyl player gif on top) sitting just to the
+  // right of the avatar's desk — like the cat, it's a static DOM overlay
+  // anchored to a fixed world point rather than a pixel-art sprite.
+  _buildDeskProp() {
+    this.deskPropAnchor = { x: -0.15, y: -0.38 }
+  }
+
+  getDeskPropAnchor() {
+    return this._projectToScreen(this.deskPropAnchor.x, this.deskPropAnchor.y)
+  }
+
+  // offset above the table, for the "NOW PLAYING" label.
+  getDeskPropLabelAnchor() {
+    return this._projectToScreen(this.deskPropAnchor.x, this.deskPropAnchor.y + 0.34)
+  }
+
   // the character sprite is centered on its own position (THREE.Sprite default
   // anchor), so for a speech bubble we want a point above its head, not its waist.
   getCharacterHeadAnchor() {
-    return this._projectToScreen(this.character.position.x, this.character.position.y + 0.17)
+    return this._projectToScreen(this.character.position.x, this.character.position.y + 0.34)
   }
 
   _updateDog(dt) {
@@ -441,53 +776,37 @@ export class PixelWorld {
     const dt = this.clock.getDelta()
     const t = this.clock.elapsedTime
 
-    // theme color easing
+    // theme color easing: sky gradient, plus the sun/beams/horizon accent
     if (!this._curSky1) {
       this._curSky1 = new THREE.Color(this.targetTheme.sky1)
       this._curSky2 = new THREE.Color(this.targetTheme.sky2)
-      this._curMountain = new THREE.Color(this.targetTheme.mountain)
+      this._curAccent = new THREE.Color(this.targetTheme.accent)
     }
     this._curSky1.lerp(new THREE.Color(this.targetTheme.sky1), Math.min(1, dt * 1.5))
     this._curSky2.lerp(new THREE.Color(this.targetTheme.sky2), Math.min(1, dt * 1.5))
-    this._curMountain.lerp(new THREE.Color(this.targetTheme.mountain), Math.min(1, dt * 1.5))
+    this._curAccent.lerp(new THREE.Color(this.targetTheme.accent), Math.min(1, dt * 1.5))
 
     this.skyMat.uniforms.colorTop.value.copy(this._curSky1)
     this.skyMat.uniforms.colorBottom.value.copy(this._curSky2)
-    this.mountainsFar.material.color.copy(this._curMountain)
-    this.mountainsNear.material.color.copy(this._curMountain).multiplyScalar(0.7)
 
-    // parallax scroll driven by progress
-    const scrollX = this.progress * 10
-    this.mountainsFar.position.x = -((scrollX * 0.15) % 10)
-    this.mountainsNear.position.x = -((scrollX * 0.35) % 10)
-    this.ground.position.x = -((scrollX * 0.9) % (0.3 * 40))
+    this.sun.material.color.copy(this._curAccent)
+    this.sunGlow.material.color.copy(this._curAccent)
+    this.beams.material.color.copy(this._curAccent)
+    this.horizonGlow.material.color.copy(this._curAccent)
+    this.skylineWindows.material.color.copy(this._curAccent)
 
     // stars twinkle + slow drift
     this.stars.material.opacity = 0.6 + Math.sin(t * 2) * 0.2
     this.stars.rotation.z = t * 0.002
 
-    // clouds drift
-    this.clouds.forEach((cl) => {
-      cl.position.x -= cl.userData.speed * dt * 4
-      if (cl.position.x < -6) cl.position.x = 6
-    })
-
-    // character bob/walk, or gesture toward a hovered skill
-    this._charFrameTimer += dt
-    const frameSpeed = this.characterGesture ? 0.4 : 0.22
-    if (this._charFrameTimer > frameSpeed) {
-      this._charFrameTimer = 0
-      this._charFrame = 1 - this._charFrame
-      const key = this.characterGesture
-        ? this._charFrame === 0 ? 'point0' : 'point1'
-        : this._charFrame === 0 ? 'idle0' : 'idle1'
-      this.character.material.map = this.charFrames[key]
-    }
+    // character position: holds still to gesture at a hovered skill, otherwise
+    // bobs gently and sways with scroll progress (the DOM overlay's own CSS
+    // animation handles the idle bob/point-wave visuals).
     if (this.characterGesture) {
-      this.character.position.y = -0.72
+      this.character.position.y = -0.38
       this.character.position.x = -0.55
     } else {
-      this.character.position.y = -0.72 + Math.abs(Math.sin(t * 6)) * 0.02
+      this.character.position.y = -0.38
       this.character.position.x = -0.55 + Math.sin(this.progress * Math.PI * 2) * 0.08
     }
 
