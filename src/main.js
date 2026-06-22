@@ -147,14 +147,10 @@ window.addEventListener('resize', updateCatPosition)
 
 // ---------------- Desk prop overlay position (static, tracks the world anchor) ----------------
 const deskProp = document.getElementById('desk-prop')
-const nowPlaying = document.getElementById('now-playing')
 function updateDeskPropPosition() {
   const anchor = world.getDeskPropAnchor()
   deskProp.style.left = `${anchor.x}px`
   deskProp.style.top = `${anchor.y}px`
-  const labelAnchor = world.getDeskPropLabelAnchor()
-  nowPlaying.style.left = `${labelAnchor.x}px`
-  nowPlaying.style.top = `${labelAnchor.y}px`
 }
 window.addEventListener('resize', updateDeskPropPosition)
 

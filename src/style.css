@@ -170,29 +170,6 @@ h1, h2, h3, .pixel-font {
   transform: scale(1.06) rotate(-2deg);
 }
 
-.now-playing {
-  position: fixed;
-  left: 0;
-  top: 0;
-  z-index: 7;
-  transform: translate(-50%, -100%);
-  font-family: 'Press Start 2P', monospace;
-  font-size: 10px;
-  color: var(--accent-pink);
-  text-shadow: 2px 2px 0 #000;
-  background: rgba(10, 10, 20, 0.75);
-  border: 2px solid var(--accent-pink);
-  padding: 5px 8px;
-  white-space: nowrap;
-  pointer-events: none;
-  animation: now-playing-pulse 1.6s ease-in-out infinite;
-}
-
-@keyframes now-playing-pulse {
-  0%, 100% { opacity: 0.8; }
-  50% { opacity: 1; }
-}
-
 .desk-prop {
   position: fixed;
   left: 0;
@@ -218,6 +195,28 @@ h1, h2, h3, .pixel-font {
   transform: rotate(-6deg);
   transform-origin: 50% 100%;
   image-rendering: pixelated;
+}
+
+.desk-prop-notes {
+  position: absolute;
+  top: -34%;
+  right: 6%;
+  font-family: 'VT323', monospace;
+  font-weight: bold;
+  font-size: 20px;
+  color: #fdf8ec;
+  text-shadow: 2px 2px 0 #1a1a1a, -1px -1px 0 #1a1a1a;
+  animation: desk-prop-notes-float 2.6s ease-in-out infinite;
+}
+
+.desk-prop-notes span {
+  font-size: 14px;
+  margin-left: 2px;
+}
+
+@keyframes desk-prop-notes-float {
+  0%, 100% { transform: translateY(0); opacity: 0.7; }
+  50% { transform: translateY(-6px); opacity: 1; }
 }
 
 /* rendered as a smooth DOM overlay (like the dog/cat/avatar) rather than

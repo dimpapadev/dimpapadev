@@ -750,10 +750,6 @@ export class PixelWorld {
   }
 
   // offset above the table, for the "NOW PLAYING" label.
-  getDeskPropLabelAnchor() {
-    return this._projectToScreen(this.deskPropAnchor.x, this.deskPropAnchor.y + 0.34)
-  }
-
   // an ambient (non-interactive) "space invaders" scene: a ship drifts back
   // and forth across the sky, periodically firing at one of several bear
   // targets scattered above the skyline. A hit bear flashes, fades out, and
